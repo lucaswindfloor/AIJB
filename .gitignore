@@ -1,0 +1,6 @@
+
+# dependencies
+/jeecgboot-vue3/node_modules/
+
+# Logs
+logs/

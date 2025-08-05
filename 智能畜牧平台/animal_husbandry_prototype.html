@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能畜牧健康管理平台 - 原型</title>
+    <style>
+        :root {
+            --primary-color: #1890ff;
+            --error-color: #f5222d;
+            --sidebar-bg: #001529;
+            --header-bg: #ffffff;
+            --content-bg: #f0f2f5;
+            --text-color: #333333;
+            --text-color-secondary: #666666;
+            --border-color: #e8e8e8;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            background-color: var(--content-bg);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 220px;
+            background-color: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .sidebar-header {
+            padding: 16px;
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 16px 0;
+        }
+        .sidebar-menu li {
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .sidebar-menu li.active, .sidebar-menu li:hover {
+            background-color: var(--primary-color);
+        }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            height: 64px;
+            background-color: var(--header-bg);
+            box-shadow: 0 1px 4px rgba(0,21,41,.08);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .kpi-cards {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 4px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            flex-grow: 1;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: var(--text-color-secondary);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .card .value {
+            font-size: 30px;
+            font-weight: bold;
+        }
+        .card .value .unit {
+            font-size: 16px;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        .dashboard-main {
+            display: flex;
+            gap: 24px;
+        }
+        .map-container {
+            flex-grow: 3;
+            height: 600px;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #999;
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        .animal-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .dot-green { background-color: #52c41a; }
+        .dot-yellow { background-color: #faad14; }
+        .dot-red { background-color: #f5222d; }
+
+        .right-panel {
+            flex-grow: 1;
+        }
+        .list-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .list-card li {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+        .list-card li:last-child {
+            border-bottom: none;
+        }
+        .tag {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: white;
+        }
+        .tag-critical { background-color: #f5222d; }
+        .tag-warn { background-color: #faad14; }
+        .tag-healthy { background-color: #52c41a; }
+        .tag-active { background-color: #1890ff; }
+        .tag-inactive { background-color: #bfbfbf; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        thead {
+            background-color: #fafafa;
+        }
+        .action-buttons button, .toolbar button {
+            margin-right: 8px;
+            background: none;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .action-buttons button:hover, .toolbar button:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .toolbar {
+            margin-bottom: 16px;
+        }
+        .toolbar button.primary {
+             background-color: var(--primary-color);
+             color: white;
+        }
+        .toolbar input {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            margin-right: 8px;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white; padding: 0; border-radius: 4px; min-width: 520px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; flex-direction: column;
+        }
+        .modal-header {
+            padding: 16px 24px; border-bottom: 1px solid var(--border-color);
+            font-size: 16px; font-weight: 500;
+        }
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 10px 16px; border-top: 1px solid var(--border-color); text-align: right;
+        }
+        .modal-footer button {
+            margin-left: 8px; padding: 6px 15px; border-radius: 4px; cursor: pointer;
+        }
+        .btn-default { border: 1px solid var(--border-color); background: white; }
+        .btn-primary { border: 1px solid var(--primary-color); background: var(--primary-color); color: white; }
+        .btn-danger { border: 1px solid var(--error-color); background: var(--error-color); color: white;}
+
+        /* Form & Description Styles */
+        .form-group { margin-bottom: 16px; display: flex; align-items: center; }
+        .form-group label { width: 120px; text-align: right; margin-right: 12px; color: var(--text-color-secondary); flex-shrink: 0; }
+        .form-group input, .form-group select {
+            flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;
+        }
+        input:read-only {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+            color: var(--text-color-secondary);
+        }
+        .form-group .ant-radio-group { display: flex; gap: 16px; }
+        .desc-list { display: grid; grid-template-columns: 120px 1fr; gap: 12px; }
+        .desc-list dt { color: var(--text-color-secondary); text-align: right; }
+        .confirmation-text { font-size: 16px; margin-bottom: 12px; }
+        .warning-text { color: var(--error-color); font-size: 12px; }
+
+        /* Styles from animal_modals_prototype */
+        .modal-content.large { width: 80vw; max-width: 1200px; }
+        .modal-content.medium { min-width: 520px; max-width: 700px; }
+        .modal-body { overflow-y: auto; }
+        .modal-footer { flex-shrink: 0; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+        .section-title { font-size: 16px; font-weight: 500; margin-top: 24px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);}
+        .desc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .desc-item > dt { color: var(--text-color-secondary); margin-bottom: 4px; }
+        .desc-item > dd { font-weight: 500; }
+        .chart-placeholder { height: 300px; background-color: #f0f2f5; display: flex; align-items: center; justify-content: center; color: #999; border-radius: 4px;}
+        .tabs { margin-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+        .tabs button { background: none; border: none; padding: 8px 16px; cursor: pointer; }
+        .tabs button.active { border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 500; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px; }
+
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">智能畜牧平台</div>
+        <ul class="sidebar-menu">
+            <li class="active" onclick="switchPage('dashboard')">牧场驾驶舱</li>
+            <li onclick="switchPage('animals')">牲畜档案管理</li>
+            <li onclick="switchPage('device_dashboard')">设备监控</li>
+            <li onclick="switchPage('devices')">设备台账管理</li>
+            <li onclick="switchPage('alarms')">AI预警中心</li>
+            <li onclick="switchPage('rules')">告警规则配置</li>
+            <li onclick="switchPage('reports')">统计报表分析</li>
+            <li onclick="switchPage('fota')">固件升级管理</li>
+        </ul>
+    </div>
+    <div class="main-content">
+        <div class="header" id="header-title">牧场驾驶舱</div>
+        <div class="content">
+            <!-- 牧场驾驶舱页面 -->
+            <div id="dashboard" class="page active">
+                <div class="kpi-cards">
+                    <div class="card">
+                        <h3>牲畜总数</h3>
+                        <div class="value">1,280 <span class="unit">头</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>健康状态分布</h3>
+                        <div class="value">
+                            <span style="color:#52c41a">1195</span> / 
+                            <span style="color:#faad14">82</span> / 
+                            <span style="color:#f5222d">3</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>今日新增告警</h3>
+                        <div class="value">5 <span class="unit">条</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>设备在线率</h3>
+                        <div class="value">99.8 <span class="unit">%</span></div>
+                    </div>
+                </div>
+                <div class="dashboard-main">
+                    <div class="map-container card">
+                        地图监控区域
+                        <div class="animal-dot dot-green" style="top: 20%; left: 30%;"></div>
+                        <div class="animal-dot dot-green" style="top: 25%; left: 33%;"></div>
+                        <div class="animal-dot dot-yellow" style="top: 50%; left: 50%;"></div>
+                        <div class="animal-dot dot-green" style="top: 60%; left: 45%;"></div>
+                        <div class="animal-dot dot-red" style="top: 70%; left: 60%;"></div>
+                        <div class="animal-dot dot-green" style="top: 65%; left: 62%;"></div>
+                    </div>
+                    <div class="right-panel">
+                        <div class="card list-card">
+                            <h3>实时告警</h3>
+                            <ul>
+                                <li><span>耳标 0035 - 高温告警</span> <span class="tag tag-critical">严重</span></li>
+                                <li><span>耳标 0112 - 活动量过低</span> <span class="tag tag-warn">警告</span></li>
+                                <li><span>耳标 0256 - 疑似发情</span> <span class="tag tag-warn">警告</span></li>
+                                <li><span>耳标 0078 - 电子围栏越界</span> <span class="tag tag-warn">警告</span></li>
+                                <li><span>耳标 0091 - 高温告警</span> <span class="tag tag-critical">严重</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 牲畜档案管理页面 -->
+            <div id="animals" class="page">
+                <div class="card">
+                    <div class="toolbar">
+                        <input type="text" placeholder="耳标号/名称">
+                        <input type="text" placeholder="健康状态">
+                        <button>查询</button>
+                        <button class="primary" onclick="showModal('modal-add-animal')">新增牲畜</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>耳标号</th>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>所属畜群</th>
+                                <th>健康状态</th>
+                                <th>健康评分</th>
+                                <th>最新AI结论</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>AH-0035</td>
+                                <td>小花</td>
+                                <td>奶牛</td>
+                                <td>A区-01群</td>
+                                <td><span class="tag tag-critical">告警</span></td>
+                                <td>65</td>
+                                <td>体温持续偏高</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-animal-details')">详情</button><button onclick="showModal('modal-bind-device')">绑定设备</button></td>
+                            </tr>
+                            <tr>
+                                <td>AH-0112</td>
+                                <td>大壮</td>
+                                <td>黄牛</td>
+                                <td>B区-03群</td>
+                                <td><span class="tag tag-warn">亚健康</span></td>
+                                <td>82</td>
+                                <td>近12小时活动量不足</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-animal-details')">详情</button><button>已绑定</button></td>
+                            </tr>
+                             <tr>
+                                <td>AH-0078</td>
+                                <td>青青</td>
+                                <td>黄牛</td>
+                                <td>C区-01群</td>
+                                <td><span class="tag tag-healthy">健康</span></td>
+                                <td>98</td>
+                                <td>一切正常</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-animal-details')">详情</button><button>已绑定</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 设备监控仪表盘 -->
+            <div id="device_dashboard" class="page">
+                 <div class="kpi-cards">
+                    <div class="card">
+                        <h3>设备总数</h3>
+                        <div class="value">1,350 <span class="unit">个</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>在线设备</h3>
+                        <div class="value">1,338 <span class="unit">个</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>离线设备</h3>
+                        <div class="value">12 <span class="unit">个</span></div>
+                    </div>
+                    <div class="card">
+                        <h3>低电量设备</h3>
+                        <div class="value">45 <span class="unit">个</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>有问题的设备 (离线超过12小时 / 电量低于20%)</h3>
+                     <table>
+                        <thead>
+                            <tr>
+                                <th>设备名称</th>
+                                <th>设备类型</th>
+                                <th>DevEUI</th>
+                                <th>状态</th>
+                                <th>电量</th>
+                                <th>最后在线时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>胶囊-SN098</td>
+                                <td>瘤胃胶囊</td>
+                                <td>1122334455667798</td>
+                                <td><span class="tag tag-inactive">离线</span></td>
+                                <td>75%</td>
+                                <td>2024-08-21 14:00:00</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-monitor-details')">详情</button><button onclick="showModal('modal-monitor-reboot')">重启指令</button></td>
+                            </tr>
+                            <tr>
+                                <td>追踪器-SN150</td>
+                                <td>动物追踪器</td>
+                                <td>1122334455667850</td>
+                                <td><span class="tag tag-active">低电量</span></td>
+                                <td>18%</td>
+                                <td>-</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-monitor-details')">详情</button><button onclick="showModal('modal-monitor-maintenance')">创建维保任务</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 设备台账管理页面 -->
+            <div id="devices" class="page">
+                <div class="card">
+                     <div class="toolbar">
+                        <input type="text" placeholder="设备名称/DevEUI">
+                        <input type="text" placeholder="设备类型">
+                        <button>查询</button>
+                        <button class="primary" onclick="showModal('modal-add')">新增设备</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>设备名称</th>
+                                <th>设备类型</th>
+                                <th>DevEUI</th>
+                                <th>生命周期状态</th>
+                                <th>设备型号</th>
+                                <th>采购日期</th>
+                                <th>绑定牲畜</th>
+                                <th>固件版本</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>胶囊-SN001</td>
+                                <td>瘤胃胶囊</td>
+                                <td>1122334455667701</td>
+                                <td><span class="tag tag-active">在用</span></td>
+                                <td>RCM-v2</td>
+                                <td>2024-01-15</td>
+                                <td>AH-0035</td>
+                                <td>v1.2.0</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-details')">详情</button><button onclick="showModal('modal-unbind')">解绑</button></td>
+                            </tr>
+                            <tr>
+                                <td>追踪器-SN002</td>
+                                <td>动物追踪器</td>
+                                <td>1122334455667702</td>
+                                <td><span class="tag tag-active">在用</span></td>
+                                 <td>TRK-v4-Pro</td>
+                                <td>2024-01-15</td>
+                                <td>AH-0112</td>
+                                <td>v2.5.1</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-details')">详情</button><button onclick="showModal('modal-unbind')">解绑</button></td>
+                            </tr>
+                            <tr>
+                                <td>胶囊-SN003</td>
+                                <td>瘤胃胶囊</td>
+                                <td>1122334455667703</td>
+                                <td><span class="tag tag-inactive">闲置</span></td>
+                                 <td>RCM-v2</td>
+                                <td>2024-01-15</td>
+                                <td>-</td>
+                                 <td>v1.2.0</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-details')">详情</button><button onclick="showModal('modal-bind')">绑定</button></td>
+                            </tr>
+                             <tr>
+                                <td>胶囊-SN004</td>
+                                <td>瘤胃胶囊</td>
+                                <td>1122334455667704</td>
+                                <td><span class="tag" style="background-color:#d9d9d9; color:#000">库存中</span></td>
+                                <td>RCM-v1</td>
+                                <td>2023-09-10</td>
+                                <td>-</td>
+                                <td>v1.1.0</td>
+                                <td class="action-buttons"><button onclick="showModal('modal-details')">详情</button><button onclick="showModal('modal-delete')">删除</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- AI预警中心页面 -->
+            <div id="alarms" class="page">
+                 <div class="card">
+                     <div class="toolbar">
+                        <input type="text" placeholder="耳标号">
+                        <input type="text" placeholder="告警类型">
+                        <input type="text" placeholder="处理状态">
+                        <button>查询</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>告警时间</th>
+                                <th>牲畜耳标</th>
+                                <th>告警类型</th>
+                                <th>告警级别</th>
+                                <th>告警内容</th>
+                                <th>处理状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2024-08-22 10:30:15</td>
+                                <td>AH-0035</td>
+                                <td>高温告警</td>
+                                <td><span class="tag tag-critical">严重</span></td>
+                                <td>体温达到41.5℃，持续超过10分钟</td>
+                                <td><span class="tag tag-inactive">待处理</span></td>
+                                <td class="action-buttons"><button onclick="showModal('modal-alarm-process')">处理</button><button onclick="showModal('modal-alarm-ignore')">忽略</button></td>
+                            </tr>
+                            <tr>
+                                <td>2024-08-22 09:15:00</td>
+                                <td>AH-0112</td>
+                                <td>活动量过低</td>
+                                <td><span class="tag tag-warn">警告</span></td>
+                                <td>近12小时活动量低于阈值50%</td>
+                                <td><span class="tag tag-inactive">待处理</span></td>
+                                <td class="action-buttons"><button onclick="showModal('modal-alarm-process')">处理</button><button onclick="showModal('modal-alarm-ignore')">忽略</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 告警规则配置页面 -->
+            <div id="rules" class="page">
+                <div class="card">
+                     <div class="toolbar">
+                        <button class="primary" onclick="showModal('modal-rule-add-edit')">新增规则</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>规则名称</th>
+                                <th>适用设备</th>
+                                <th>监控字段</th>
+                                <th>触发条件</th>
+                                <th>是否启用</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>高温告警</td>
+                                <td>瘤胃胶囊</td>
+                                <td>Temperature</td>
+                                <td>> 41.0</td>
+                                <td><span class="tag tag-active">已启用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-rule-add-edit')">编辑</button>
+                                    <button onclick="showConfirmationModal('确认禁用', '您确定要禁用此条告警规则吗？', '禁用后，该规则将不再触发新的告警。您可以随时在列表中重新启用它。', '确认禁用')">禁用</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>活动量过低</td>
+                                <td>瘤胃胶囊</td>
+                                <td>Activity</td>
+                                <td>&lt; 1000</td>
+                                <td><span class="tag tag-active">已启用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-rule-add-edit')">编辑</button>
+                                    <button onclick="showConfirmationModal('确认禁用', '您确定要禁用此条告警规则吗？', '禁用后，该规则将不再触发新的告警。您可以随时在列表中重新启用它。', '确认禁用')">禁用</button>
+                                </td>
+                            </tr>
+                             <tr>
+                                <td>越界告警</td>
+                                <td>动物追踪器</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td><span class="tag tag-active">已启用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-rule-add-edit')">编辑</button>
+                                    <button onclick="showConfirmationModal('确认禁用', '您确定要禁用此条告警规则吗？', '禁用后，该规则将不再触发新的告警。您可以随时在列表中重新启用它。', '确认禁用')">禁用</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 统计报表分析页面 -->
+            <div id="reports" class="page">
+                <div class="card" style="margin-bottom: 24px;">
+                     <div class="toolbar" style="margin-bottom: 0;">
+                        <span style="margin-right: 8px;">查询日期:</span>
+                        <input type="text" placeholder="YYYY-MM-DD" style="width: 120px;">
+                        <span style="margin: 0 4px;">-</span>
+                        <input type="text" placeholder="YYYY-MM-DD" style="width: 120px; margin-right: 16px;">
+                        
+                        <span style="margin-right: 8px;">查询粒度:</span>
+                        <select style="width: 100px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); margin-right: 16px;">
+                            <option>按天</option>
+                            <option>按月</option>
+                        </select>
+                        
+                        <button>查询</button>
+                    </div>
+                </div>
+                
+                <div class="dashboard-main" style="flex-direction: column;">
+                    <div class="kpi-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="card">
+                           <h3 style="margin-bottom: 16px;">牲畜健康状态趋势</h3>
+                           <div class="chart-placeholder"></div>
+                        </div>
+                        <div class="card">
+                           <h3 style="margin-bottom: 16px;">最新健康状态分布 (饼图)</h3>
+                           <div class="chart-placeholder"></div>
+                        </div>
+                    </div>
+                     <div class="kpi-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+                        <div class="card">
+                           <h3 style="margin-bottom: 16px;">告警类型分布 (饼图)</h3>
+                           <div class="chart-placeholder"></div>
+                        </div>
+                        <div class="card">
+                           <h3 style="margin-bottom: 16px;">预留图表位</h3>
+                           <div class="chart-placeholder"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 固件升级管理页面 -->
+            <div id="fota" class="page">
+                <div class="card">
+                     <div class="tabs">
+                        <button class="active" onclick="switchFotaTab(event, 'firmware-versions')">固件版本管理</button>
+                        <button onclick="switchFotaTab(event, 'fota-tasks')">升级任务历史</button>
+                    </div>
+
+                    <!-- 固件版本管理 Tab Pane -->
+                    <div id="firmware-versions" class="fota-tab-pane active">
+                        <div class="toolbar">
+                            <button class="primary" onclick="showModal('modal-fota-upload')">上传新固件</button>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>固件版本</th>
+                                    <th>适用设备类型</th>
+                                    <th>文件大小</th>
+                                    <th>上传时间</th>
+                                    <th>更新说明</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>v1.2.1</td>
+                                    <td>瘤胃胶囊</td>
+                                    <td>512 KB</td>
+                                    <td>2024-08-22 11:00:00</td>
+                                    <td>优化功耗，修复心跳包丢失问题。</td>
+                                    <td class="action-buttons">
+                                        <button onclick="showModal('modal-fota-create-task')">创建升级任务</button>
+                                        <button onclick="showConfirmationModal('确认删除', '您确定要删除此固件吗？', '删除后将无法用于新的升级任务。', '确认删除')">删除</button>
+                                    </td>
+                                </tr>
+                                 <tr>
+                                    <td>v2.5.3</td>
+                                    <td>动物追踪器</td>
+                                    <td>1.2 MB</td>
+                                    <td>2024-08-20 15:30:00</td>
+                                    <td>增加运动模式识别算法。</td>
+                                    <td class="action-buttons">
+                                        <button onclick="showModal('modal-fota-create-task')">创建升级任务</button>
+                                        <button onclick="showConfirmationModal('确认删除', '您确定要删除此固件吗？', '删除后将无法用于新的升级任务。', '确认删除')">删除</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 升级任务历史 Tab Pane -->
+                    <div id="fota-tasks" class="fota-tab-pane" style="display: none;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>任务名称</th>
+                                    <th>目标固件版本</th>
+                                    <th>目标范围</th>
+                                    <th>任务状态</th>
+                                    <th>创建时间</th>
+                                    <th>完成时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>全体胶囊V1.2.1升级</td>
+                                    <td>v1.2.1</td>
+                                    <td>瘤胃胶囊 (全部)</td>
+                                    <td><span class="tag" style="background-color: #108ee9;">进行中</span></td>
+                                    <td>2024-08-23 10:00:00</td>
+                                    <td>-</td>
+                                    <td class="action-buttons"><button>详情</button></td>
+                                </tr>
+                                <tr>
+                                    <td>B区黄牛追踪器升级</td>
+                                    <td>v2.5.3</td>
+                                    <td>动物追踪器 (B区-03群)</td>
+                                    <td><span class="tag tag-healthy">已完成</span></td>
+                                    <td>2024-08-21 16:00:00</td>
+                                    <td>2024-08-21 18:30:00</td>
+                                    <td class="action-buttons"><button>详情</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- =================================================================== -->
+    <!--                       所有页面的弹窗统一存放于此                      -->
+    <!-- =================================================================== -->
+
+    <!-- Modals for Device Ledger -->
+    <!-- 新增设备 Modal -->
+    <div id="modal-add" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">新增设备台账</div>
+            <div class="modal-body">
+                <p style="color: var(--text-color-secondary); margin-top: 0; margin-bottom: 24px;">在此处登记新采购的设备。登记后，设备状态为“库存中”，可以被后续绑定到牲畜。设备的在线状态将在首次上报数据后自动更新。</p>
+                <div class="form-group"><label>DevEUI</label><input type="text" placeholder="请输入设备外壳上的16位DevEUI"></div>
+                <div class="form-group"><label>设备名称</label><input type="text" placeholder="为设备设置一个易于识别的名称"></div>
+                <div class="form-group"><label>设备类型</label>
+                    <select>
+                        <option value="CAPSULE">瘤胃胶囊</option>
+                        <option value="TRACKER">动物追踪器</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>设备型号</label><input type="text" placeholder="（选填）请输入设备型号，如 RCM-v2"></div>
+                <div class="form-group"><label>采购日期</label><input type="date"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-add')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-add')">确认新增</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 设备台账详情 Modal -->
+    <div id="modal-details" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">设备详情</div>
+            <div class="modal-body">
+                <dl class="desc-list">
+                    <dt>设备名称:</dt><dd>胶囊-SN001</dd>
+                    <dt>设备类型:</dt><dd>瘤胃胶囊</dd>
+                    <dt>DevEUI:</dt><dd>1122334455667701</dd>
+                    <dt>ThingsBoard ID:</dt><dd>e8dc6470-4dc1-11f0...</dd>
+                    <dt>生命周期状态:</dt><dd>在用</dd>
+                    <dt>绑定牲畜:</dt><dd>AH-0035 (小花)</dd>
+                    <dt>电量:</dt><dd>88% (从设备监控页查看)</dd>
+                    <dt>固件版本:</dt><dd>v1.2.0</dd>
+                    <dt>设备型号:</dt><dd>RCM-v2</dd>
+                    <dt>采购日期:</dt><dd>2024-01-15</dd>
+                    <dt>最后在线时间:</dt><dd>2024-08-22 14:05:10 (从设备监控页查看)</dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closeModal('modal-details')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备台账绑定 Modal -->
+    <div id="modal-bind" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">将设备绑定到牲畜</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>搜索牲畜</label>
+                    <input type="text" placeholder="按耳标号搜索" style="flex-grow: 2;">
+                    <button class="btn-primary" style="margin-left: 8px; padding: 8px 15px;">搜索</button>
+                </div>
+                <div style="margin-top: 16px;">
+                    <p>搜索结果:</p>
+                    <dl class="desc-list">
+                        <dt>耳标号:</dt><dd>AH-0088</dd>
+                        <dt>昵称:</dt><dd>多莉</dd>
+                        <dt>类型:</dt><dd>奶牛</dd>
+                        <dt>健康状态:</dt><dd>健康</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-bind')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-bind')">确认绑定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备台账解绑 Modal -->
+    <div id="modal-unbind" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">确认解绑</div>
+            <div class="modal-body">
+                <p class="confirmation-text">您确定要从牲畜 [AH-0035] 上解绑设备 [胶囊-SN001] 吗？</p>
+                <p style="color: var(--text-color-secondary);">解绑后，该设备的历史数据仍保留在该牲畜档案下，设备状态将变更为'闲置'。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-unbind')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-unbind')">确认解绑</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备台账删除 Modal -->
+    <div id="modal-delete" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">确认删除</div>
+            <div class="modal-body">
+                <p class="confirmation-text">您确定要删除设备 [胶囊-SN004] 吗？</p>
+                <p class="warning-text">此操作不可逆，仅推荐对从未激活或录入错误的设备执行！</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-delete')">取消</button>
+                <button class="btn-danger" onclick="closeModal('modal-delete')">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for Animal Ledger -->
+    <!-- 新增牲畜 Modal -->
+    <div id="modal-add-animal" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">新增牲畜档案</div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label>耳标号</label><input type="text" placeholder="请输入耳标号 (唯一)"></div>
+                    <div class="form-group"><label>牲畜昵称</label><input type="text" placeholder="（选填）"></div>
+                    <div class="form-group"><label>牲畜类型</label><select><option>黄牛</option><option>奶牛</option></select></div>
+                    <div class="form-group"><label>所属畜群</label><select><option>A区-01群</option><option>B区-03群</option></select></div>
+                    <div class="form-group"><label>性别</label><select><option>雌性</option><option>雄性</option></select></div>
+                    <div class="form-group"><label>出生日期</label><input type="date"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-add-animal')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-add-animal')">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 牲畜详情 Modal -->
+    <div id="modal-animal-details" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content large">
+            <div class="modal-header">牲畜档案详情：AH-0035 (小花)</div>
+            <div class="modal-body">
+                <div class="section-title">基本信息</div>
+                <div class="desc-grid">
+                    <dl class="desc-item"><dt>耳标号</dt><dd>AH-0035</dd></dl>
+                    <dl class="desc-item"><dt>昵称</dt><dd>小花</dd></dl>
+                    <dl class="desc-item"><dt>类型</dt><dd>奶牛</dd></dl>
+                    <dl class="desc-item"><dt>所属畜群</dt><dd>A区-01群</dd></dl>
+                    <dl class="desc-item"><dt>性别</dt><dd>雌性</dd></dl>
+                    <dl class="desc-item"><dt>出生日期</dt><dd>2022-05-10 (2岁3个月)</dd></dl>
+                    <dl class="desc-item"><dt>最新体重</dt><dd>550 KG</dd></dl>
+                    <dl class="desc-item"><dt>最后更新位置</dt><dd>104.0615, 30.6598</dd></dl>
+                </div>
+
+                <div class="section-title">健康概览</div>
+                 <div class="desc-grid">
+                    <dl class="desc-item"><dt>健康状态</dt><dd><span class="tag tag-red">告警</span></dd></dl>
+                    <dl class="desc-item"><dt>健康评分</dt><dd>65</dd></dl>
+                    <dl class="desc-item"><dt>最新体温</dt><dd>41.5 ℃ <span class="tag tag-red" style="font-size: 11px; padding: 1px 6px;">偏高</span></dd></dl>
+                    <dl class="desc-item"><dt>最新活动量</dt><dd>850</dd></dl>
+                    <dl class="desc-item" style="grid-column: span 2;"><dt>最新AI分析结论</dt><dd>体温持续偏高，有炎症风险，请兽医尽快检查。</dd></dl>
+                </div>
+
+                <div class="section-title">绑定设备信息</div>
+                <table>
+                    <thead><tr><th>设备类型</th><th>设备名称</th><th>状态</th><th>电量</th><th>RSSI/SNR</th><th>传感器状态</th><th>最后上报时间</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr><td>瘤胃胶囊</td><td>胶囊-SN001</td><td>在用</td><td>88%</td><td>-88 / 7.5</td><td>正常</td><td>2024-08-23 10:55:00</td><td class="action-buttons">-</td></tr>
+                        <tr><td>动物追踪器</td><td>追踪器-SN002</td><td>在用</td><td><span style="color: var(--error-color);">18% (低电量)</span></td><td>-95 / 5.0</td><td>正常</td><td>2024-08-23 10:52:10</td><td class="action-buttons"><button>定位</button></td></tr>
+                    </tbody>
+                </table>
+                
+                <div class="section-title">数据可视化</div>
+                 <div class="chart-grid">
+                    <div class="chart-placeholder">体温历史曲线图</div>
+                    <div class="chart-placeholder">活动量历史曲线图</div>
+                    <div class="chart-placeholder">步数历史曲线图</div>
+                </div>
+
+                <div class="section-title">关联记录</div>
+                <div class="tabs">
+                    <button class="active">告警历史</button>
+                    <button>生命周期事件</button>
+                </div>
+                <table>
+                     <thead><tr><th>告警时间</th><th>告警类型</th><th>告警内容</th><th>处理状态</th></tr></thead>
+                     <tbody>
+                         <tr><td>2024-08-22 10:30:15</td><td>高温告警</td><td>体温达到41.5℃</td><td>待处理</td></tr>
+                     </tbody>
+                </table>
+                <!-- This table below would be shown when the "生命周期事件" tab is clicked. -->
+                <div style="margin-top: 16px;">
+                    <button class="btn-primary" style="padding: 6px 15px; margin-bottom: 16px;" onclick="showModal('modal-add-event')">新增事件</button>
+                    <table>
+                         <thead><tr><th>事件时间</th><th>事件类型</th><th>事件描述</th></tr></thead>
+                         <tbody>
+                             <tr><td>2024-07-15 09:00:00</td><td>免疫接种</td><td>牛病毒性腹泻-灭活苗 2ml</td></tr>
+                             <tr><td>2022-05-10 14:30:00</td><td>出生</td><td>-</td></tr>
+                         </tbody>
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closeModal('modal-animal-details')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 为牲畜绑定设备 Modal -->
+    <div id="modal-bind-device" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">为牲畜 [AH-0035] 绑定设备</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>搜索可用设备</label>
+                    <input type="text" placeholder="按设备名称或DevEUI搜索" style="flex-grow: 2;">
+                    <button class="btn-primary" style="margin-left: 8px; padding: 8px 15px;">搜索</button>
+                </div>
+                <div style="margin-top: 16px;">
+                    <p>搜索结果 (仅显示'库存中'或'闲置'的设备):</p>
+                    <table>
+                        <thead><tr><th>设备名称</th><th>设备类型</th><th>状态</th><th>选择</th></tr></thead>
+                        <tbody>
+                            <tr><td>胶囊-SN101</td><td>瘤胃胶囊</td><td>库存中</td><td><input type="radio" name="device_select"></td></tr>
+                            <tr><td>追踪器-SN205</td><td>动物追踪器</td><td>闲置</td><td><input type="radio" name="device_select"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-bind-device')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-bind-device')">确认绑定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增生命周期事件 Modal -->
+    <div id="modal-add-event" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">为牲畜 [AH-0035] 记录新事件</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>事件类型</label>
+                    <select>
+                        <option>免疫接种</option>
+                        <option>治疗</option>
+                        <option>配种</option>
+                        <option>分娩</option>
+                        <option>称重</option>
+                        <option>转群</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label>事件时间</label>
+                    <input type="datetime-local">
+                </div>
+                <div class="form-group" style="align-items: flex-start;">
+                    <label style="padding-top: 8px;">事件描述</label>
+                    <textarea rows="4" style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-add-event')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-add-event')">确认记录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for Device Monitoring -->
+    <!-- 设备监控详情 Modal -->
+    <div id="modal-monitor-details" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content large">
+            <div class="modal-header">设备运行时详情: 胶囊-SN098</div>
+            <div class="modal-body">
+                <div class="chart-grid">
+                    <div class="chart-placeholder">电池电量历史曲线</div>
+                    <div class="chart-placeholder">信号强度(RSSI)历史曲线</div>
+                    <div class="chart-placeholder">信噪比(SNR)历史曲线</div>
+                </div>
+                <div class="section-title" style="margin-top: 24px;">近期事件与指令日志</div>
+                <table>
+                     <thead><tr><th>时间</th><th>类型</th><th>内容</th><th>状态</th></tr></thead>
+                     <tbody>
+                         <tr><td>2024-08-22 10:30:15</td><td>指令下发</td><td>重启设备</td><td>已送达</td></tr>
+                         <tr><td>2024-08-22 10:30:05</td><td>设备事件</td><td>设备上线</td><td>-</td></tr>
+                         <tr><td>2024-08-21 14:00:00</td><td>设备事件</td><td>设备离线</td><td>-</td></tr>
+                     </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closeModal('modal-monitor-details')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设备重启指令 Modal -->
+    <div id="modal-monitor-reboot" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">确认操作</div>
+            <div class="modal-body">
+                <p class="confirmation-text">您确定要向设备 [胶囊-SN098] 发送重启指令吗?</p>
+                <p style="color: var(--text-color-secondary);">该指令将通过LoRaWAN下发，设备将在下一次上行通信后接收并执行。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-monitor-reboot')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-monitor-reboot')">确认发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建维保任务 Modal -->
+    <div id="modal-monitor-maintenance" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">为设备 [追踪器-SN150] 创建维保任务</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>任务类型</label>
+                    <select>
+                        <option selected>更换电池</option>
+                        <option>固件升级</option>
+                        <option>设备检修</option>
+                        <option>其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>指派给</label>
+                    <select>
+                        <option>张三 (技术员)</option>
+                        <option>李四 (技术员)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-items: flex-start;">
+                    <label style="padding-top: 8px;">备注说明</label>
+                    <textarea rows="4" style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" placeholder="（选填）详细描述问题或操作要求"></textarea>
+                </div>
+                <p class="warning-text" style="font-size: 13px; margin-top: 16px;">注意：确认后，该设备在“设备台账”中的状态将自动变更为“维保中”，在维保完成前无法被绑定。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-monitor-maintenance')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-monitor-maintenance')">确认创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for AI Alarm Center -->
+    <!-- 处理告警 Modal -->
+    <div id="modal-alarm-process" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">处理告警</div>
+            <div class="modal-body">
+                <p style="color: var(--text-color-secondary); margin-top: 0; margin-bottom: 24px;">请在此处记录您对该告警的处理过程和结果。该记录将作为重要依据存入系统。</p>
+                <div class="form-group">
+                    <label style="font-weight: bold;">告警对象:</label>
+                    <p>AH-0007 (壮壮)</p>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: bold;">告警内容:</label>
+                    <p>体温达到41.5℃，持续超过10分钟。</p>
+                </div>
+                <div class="form-group">
+                    <label>处理备注</label>
+                    <textarea rows="4" placeholder="例如：已联系兽医进行物理降温，并注射抗生素。"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-alarm-process')">取消</button>
+                <button class="btn-primary">确认处理</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 忽略告警 Modal -->
+    <div id="modal-alarm-ignore" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">忽略告警</div>
+            <div class="modal-body">
+                <p>您确定要忽略此条告警吗？</p>
+                <p style="color: var(--text-color-secondary); font-size: 13px;">忽略后，该告警的状态将变为“已忽略”，并不再计入待处理列表。建议仅对确认为误报的告警执行此操作。</p>
+                 <div class="form-group" style="margin-top: 20px;">
+                    <label>忽略原因 (可选)</label>
+                    <input type="text" placeholder="例如：传感器数据波动导致误报">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-alarm-ignore')">取消</button>
+                <button class="btn-primary">确认忽略</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for Alarm Rule Config -->
+    <!-- 新增/编辑规则 Modal -->
+    <div id="modal-rule-add-edit" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+          <div class="modal-header">新增/编辑告警规则</div>
+          <div class="modal-body">
+            <form class="jeecg-form">
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">规则名称</label>
+                <div class="col-sm-9">
+                  <input type="text" class="form-control" value="高温告警" placeholder="请输入规则名称">
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">适用设备类型</label>
+                <div class="col-sm-9">
+                  <select class="form-control">
+                    <option value="CAPSULE" selected>瘤胃胶囊</option>
+                    <option value="TRACKER">动物追踪器</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">监控项</label>
+                <div class="col-sm-9">
+                  <!-- 此下拉框选项应根据"适用设备类型"动态加载 -->
+                  <select class="form-control">
+                    <option value="Temperature" selected>体温</option>
+                    <option value="Gastric_momentum">活动量</option>
+                    <option value="rssi">信号强度</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">触发条件</label>
+                <div class="col-sm-9">
+                  <div class="input-group">
+                    <div class="input-group-prepend">
+                      <select class="form-control" style="width: 80px;">
+                        <option value=">" selected>&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value="=">=</option>
+                      </select>
+                    </div>
+                    <input type="number" class="form-control" value="40.5" placeholder="请输入阈值">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">持续时间(秒)</label>
+                <div class="col-sm-9">
+                  <input type="number" class="form-control" value="600" placeholder="0表示瞬时触发">
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">关联告警类型</label>
+                <div class="col-sm-9">
+                  <select class="form-control">
+                    <option value="a_temp_high" selected>高温告警</option>
+                    <option value="a_temp_low">低温告警</option>
+                    <option value="a_inactive">活动量过低</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">是否启用</label>
+                <div class="col-sm-9">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="ruleEnabledSwitch" checked>
+                    <label class="custom-control-label" for="ruleEnabledSwitch"></label>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" onclick="closeModal('modal-rule-add-edit')">取消</button>
+            <button type="button" class="btn btn-primary" onclick="closeModal('modal-rule-add-edit')">确认</button>
+          </div>
+        </div>
+    </div>
+
+    <!-- 禁用/删除规则确认 Modal -->
+    <div id="modal-delete-confirm" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirm-modal-title">确认删除</h5>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-modal-text">您确定要删除此条告警规则吗？</p>
+                <p style="color: var(--text-color-secondary); font-size: 13px;" id="confirm-modal-warning">此操作不可逆，仅推荐对从未激活或录入错误的规则执行！</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-delete-confirm')">取消</button>
+                <button class="btn-danger" id="confirm-modal-button" onclick="closeModal('modal-delete-confirm')">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for FOTA -->
+    <!-- 上传固件 Modal -->
+    <div id="modal-fota-upload" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">上传新固件</div>
+            <div class="modal-body">
+                <div class="form-group"><label>固件文件</label><input type="file"></div>
+                <div class="form-group"><label>固件版本</label><input type="text" placeholder="请输入版本号，如 v1.2.2"></div>
+                <div class="form-group"><label>适用设备类型</label>
+                    <select>
+                        <option>瘤胃胶囊</option>
+                        <option>动物追踪器</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-items: flex-start;">
+                    <label style="padding-top: 8px;">版本更新说明</label>
+                    <textarea rows="4" style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" placeholder="详细描述此版本的更新内容"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-fota-upload')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-fota-upload')">确认上传</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建FOTA任务 Modal -->
+    <div id="modal-fota-create-task" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content medium">
+            <div class="modal-header">创建升级任务</div>
+            <div class="modal-body">
+                <div class="form-group"><label>任务名称</label><input type="text" placeholder="（选填）为此任务设置一个易于识别的名称"></div>
+                <div class="form-group"><label>目标固件</label><input type="text" value="v1.2.1 (瘤胃胶囊)" readonly></div>
+                <div class="form-group" style="align-items: flex-start;">
+                    <label style="padding-top: 8px;">升级范围</label>
+                    <div>
+                        <div style="margin-bottom: 8px;">
+                            <input type="radio" name="fota_scope" id="fota_all" value="ALL" checked onchange="toggleFotaTarget(this.value)">
+                            <label for="fota_all">所有适用的设备</label>
+                        </div>
+                         <div style="margin-bottom: 8px;">
+                            <input type="radio" name="fota_scope" id="fota_herd" value="BY_HERD" onchange="toggleFotaTarget(this.value)">
+                            <label for="fota_herd">按畜群选择</label>
+                        </div>
+                         <div style="margin-bottom: 8px;">
+                            <input type="radio" name="fota_scope" id="fota_device" value="BY_DEVICE" onchange="toggleFotaTarget(this.value)">
+                            <label for="fota_device">按设备选择</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="fota-target-selector" class="form-group" style="display: none;">
+                    <label>选择目标</label>
+                    <select multiple style="height: 120px;">
+                        <!-- Options will be loaded dynamically -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-fota-create-task')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-fota-create-task')">确认并启动任务</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchPage(pageId) {
+            // 切换页面显示
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            // 切换菜单高亮
+            const currentItem = event.currentTarget;
+            document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+            currentItem.classList.add('active');
+            
+            // 切换头部标题
+            document.getElementById('header-title').innerText = currentItem.innerText;
+        }
+
+        function switchFotaTab(event, tabId) {
+            const parent = event.currentTarget.parentElement;
+            // Handle tab button active state
+            parent.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            // Handle tab pane visibility
+            const card = parent.closest('.card');
+            card.querySelectorAll('.fota-tab-pane').forEach(pane => {
+                pane.style.display = pane.id === tabId ? 'block' : 'none';
+            });
+        }
+
+        function toggleFotaTarget(scope) {
+            const selector = document.getElementById('fota-target-selector');
+            if (scope === 'BY_HERD' || scope === 'BY_DEVICE') {
+                selector.style.display = 'flex';
+                // In a real app, you would load different options here
+                const selectEl = selector.querySelector('select');
+                if (scope === 'BY_HERD') {
+                    selectEl.innerHTML = '<option>A区-01群</option><option>B区-03群</option>';
+                } else {
+                     selectEl.innerHTML = '<option>胶囊-SN101</option><option>胶囊-SN102</option>';
+                }
+            } else {
+                selector.style.display = 'none';
+            }
+        }
+
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+               modal.classList.add('active');
+            }
+        }
+
+        function showConfirmationModal(title, text, warning, buttonText) {
+            document.getElementById('confirm-modal-title').innerText = title;
+            document.getElementById('confirm-modal-text').innerText = text;
+            const warningEl = document.getElementById('confirm-modal-warning');
+            if (warning) {
+                warningEl.innerText = warning;
+                warningEl.style.display = 'block';
+            } else {
+                warningEl.style.display = 'none';
+            }
+            const confirmBtn = document.getElementById('confirm-modal-button');
+            confirmBtn.innerText = buttonText;
+
+            showModal('modal-delete-confirm');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+               modal.classList.remove('active');
+            }
+        }
+        function closeOnOverlay(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeModal(event.target.id);
+            }
+        }
+    </script>
+</body>
+</html> 

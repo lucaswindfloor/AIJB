@@ -1,0 +1,204 @@
+{
+  "ruleChain": {
+    "name": "动物追踪器-规则链-v1",
+    "type": "CORE",
+    "firstRuleNodeId": null,
+    "root": false,
+    "debugMode": true,
+    "configuration": null,
+    "additionalInfo": {
+      "description": "用于GAT-100动物追踪器的数据解码、处理和存储。"
+    }
+  },
+  "metadata": {
+    "version": 2,
+    "firstNodeIndex": 0,
+    "nodes": [
+      {
+        "type": "org.thingsboard.rule.engine.profile.TbDeviceProfileNode",
+        "name": "Device Profile Node",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 1,
+        "configuration": {
+          "persistAlarmRulesState": false,
+          "fetchAlarmRulesStateOnStart": false
+        },
+        "additionalInfo": {
+          "description": "使用设备配置文件中定义的警报规则处理来自设备的消息。将所有传入消息与“Success”关系类型一起分派。",
+          "layoutX": 260,
+          "layoutY": 302
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.filter.TbMsgTypeSwitchNode",
+        "name": "Message Type Switch",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "version": 0
+        },
+        "additionalInfo": {
+          "description": null,
+          "layoutX": 470,
+          "layoutY": 458
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "Base64 to Hex",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "function base64decode(e){var r,a,c,h,o,t,d,base64DecodeChars=new Array(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1);for(t=e.length,o=0,d='';o<t;){do{r=base64DecodeChars[255&e.charCodeAt(o++)]}while(o<t&&-1==r);if(-1==r)break;do{a=base64DecodeChars[255&e.charCodeAt(o++)]}while(o<t&&-1==a);if(-1==a)break;d+=String.fromCharCode(r<<2|(48&a)>>4);do{if(61==(c=255&e.charCodeAt(o++)))return d;c=base64DecodeChars[c]}while(o<t&&-1==c);if(-1==c)break;d+=String.fromCharCode((15&a)<<4|(60&c)>>2);do{if(61==(h=255&e.charCodeAt(o++)))return d;h=base64DecodeChars[h]}while(o<t&&-1==h);if(-1==h)break;d+=String.fromCharCode((3&c)<<6|h)}return d}function base64ToHex(r){for(var e=base64decode(r.replace(/[ \\r\\n]+$/,\"\")),o=0,a=[];o<e.length;++o){var t=e.charCodeAt(o).toString(16);1===t.length&&(t=\"0\"+t),a[a.length]=t}return a.join(\"\")}if(msg.data){msg.dataHex=base64ToHex(msg.data)}return{msg:msg,metadata:metadata,msgType:msgType};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "将 'data' (Base64) 转换为 'dataHex' (Hex)",
+          "layoutX": 553,
+          "layoutY": 183
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "动物追踪器解码器",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "function hexToBytes(hex) {\n    if (!hex) return [];\n    var bytes = [];\n    for (var i = 0; i < hex.length; i += 2) {\n        bytes.push(parseInt(hex.substr(i, 2), 16));\n    }\n    return bytes;\n}\n\nfunction decodeUplink(input) {\n    var bytes = hexToBytes(input.msg.dataHex);\n    var decoded = {};\n\n    if (!(bytes && bytes.length > 4 && bytes[0] === 0x68 && bytes[1] === 0x6B && bytes[2] === 0x74)) {\n        return null;\n    }\n\n    var i = 5;\n    while (i < bytes.length) {\n        var type = bytes[i++];\n        switch (type) {\n            case 0x01:  //software_ver and hardware_ver\n                decoded.hard_ver = bytes[i++];\n                decoded.soft_ver = bytes[i++];\n                break;\n            case 0x03:// BATTERY\n                decoded.battery = bytes[i++];\n                break;\n            case 0x09:// temperature\n                var value = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];\n                if (value & 0x800000) { value |= 0xFF000000; }\n                decoded.temperature = value / 1000;\n                i += 3;\n                break;\n            case 0x0A:// humidity\n                var hum_val = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];\n                decoded.humidity = hum_val / 1000;\n                i += 3;\n                break;\n            case 0x10:// GPS latitude\n                var lat_val = (bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3];\n                decoded.latitude = lat_val / 1000000;\n                i += 4;\n                break;\n            case 0x11:// GPS longitude\n                var lon_val = (bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3];\n                decoded.longitude = lon_val / 1000000;\n                i += 4;\n                break;\n            case 0x15:// step\n                decoded.step = (bytes[i] << 8) | bytes[i + 1];\n                i += 2;\n                break;\n            case 0x39:// work mode and report interval\n                decoded.work_mode = bytes[i++];\n                decoded.report_interval_time1 = (bytes[i] << 8) | bytes[i+1]; i += 2;\n                decoded.start_hour_time1 = bytes[i++];\n                decoded.start_min_time1 = bytes[i++];\n                decoded.end_hour_time1 = bytes[i++];\n                decoded.end_min_time1 = bytes[i++];\n                decoded.report_interval_time2 = (bytes[i] << 8) | bytes[i+1]; i += 2;\n                decoded.start_hour_time2 = bytes[i++];\n                decoded.start_min_time2 = bytes[i++];\n                decoded.end_hour_time2 = bytes[i++];\n                decoded.end_min_time2 = bytes[i++];\n                decoded.idle_interval = (bytes[i] << 8) | bytes[i+1]; i += 2;\n                break;\n            case 0x84:// tamper alarm\n                decoded.tamper_alarm = bytes[i++];\n                break;\n            default:\n                i = bytes.length; // Stop on unknown type\n                break;\n        }\n    }\n    \n    input.msg.result = decoded;\n    return input;\n}\n\nvar output = decodeUplink({msg: msg, metadata: metadata, msgType: msgType});\nreturn output ? {msg: output.msg, metadata: output.metadata, msgType: output.msgType} : {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "解码动物追踪器的二进制数据。",
+          "layoutX": 760,
+          "layoutY": 182
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.filter.TbJsFilterNode",
+        "name": "过滤解码失败的数据",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "return !!msg.result && Object.keys(msg.result).length > 0;",
+          "tbelScript": "return !!msg.result;"
+        },
+        "additionalInfo": {
+          "description": "如果解码器未能成功解析数据，则中止该链。",
+          "layoutX": 992,
+          "layoutY": 108
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "提取遥测和属性",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "return {msg: msg.result, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg.result, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "将解码后的 'result' 对象作为消息主体，以便后续节点可以访问其字段。",
+          "layoutX": 1098,
+          "layoutY": 223
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode",
+        "name": "Save Timeseries",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "defaultTTL": 0,
+          "skipLatestPersistence": false,
+          "useServerTs": true
+        },
+        "additionalInfo": {
+          "description": "保存提取的遥测数据 (e.g., temperature, latitude, longitude, step, battery, tamper_alarm, humidity).",
+          "layoutX": 1337,
+          "layoutY": 199
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgAttributesNode",
+        "name": "Save Client Attributes",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 2,
+        "configuration": {
+          "scope": "CLIENT_SCOPE",
+          "notifyDevice": false,
+          "sendAttributesUpdatedNotification": false,
+          "updateAttributesOnlyOnValueChange": true
+        },
+        "additionalInfo": {
+          "description": "保存提取的客户端属性 (e.g., hard_ver, soft_ver, work_mode, report intervals).",
+          "layoutX": 1210,
+          "layoutY": 486
+        }
+      }
+    ],
+    "connections": [
+      {
+        "fromIndex": 0,
+        "toIndex": 1,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 1,
+        "toIndex": 2,
+        "type": "Post telemetry"
+      },
+      {
+        "fromIndex": 1,
+        "toIndex": 7,
+        "type": "Post attributes"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 3,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 3,
+        "toIndex": 4,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 4,
+        "toIndex": 5,
+        "type": "True"
+      },
+      {
+        "fromIndex": 5,
+        "toIndex": 6,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 5,
+        "toIndex": 7,
+        "type": "Success"
+      }
+    ],
+    "ruleChainConnections": null
+  }
+}

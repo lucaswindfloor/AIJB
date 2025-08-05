@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.jeecg.modules.parking.mapper.ParkingRecordMapper">
+
+    <select id="getParkingRecordPage" resultType="org.jeecg.modules.parking.vo.ParkingRecordPage">
+        SELECT
+            pr.*,
+            pl.name AS parking_lot_name,
+            pc_in.name AS entry_checkpoint_name,
+            pc_out.name AS exit_checkpoint_name
+        FROM
+            p_parking_record pr
+        LEFT JOIN
+            p_parking_lot pl ON pr.parking_lot_id = pl.id
+        LEFT JOIN
+            p_checkpoint pc_in ON pr.entry_checkpoint_id = pc_in.id
+        LEFT JOIN
+            p_checkpoint pc_out ON pr.exit_checkpoint_id = pc_out.id
+        ${ew.customSqlSegment}
+    </select>
+
+</mapper> 

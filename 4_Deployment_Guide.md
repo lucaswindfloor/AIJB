@@ -1,0 +1,141 @@
+# JeecgBoot项目部署指南
+
+**本文档是部署和运维的“执行手册”，包含了所有与环境配置、构建打包和部署上线相关的操作指南。**
+
+## 1. 部署架构支持
+
+1. **单机部署**：传统单体应用部署
+2. **集群部署**：负载均衡 + 数据库集群
+3. **微服务部署**：Spring Cloud微服务架构
+4. **容器化部署**：Docker + Docker Compose
+5. **云原生部署**：Kubernetes支持
+
+## 2. 环境与配置
+
+### 2.1. 开发环境配置
+- **JDK版本**：Java 17（兼容JDK 8）
+- **数据库**：MySQL 8.0+
+- **缓存**：Redis 6.0+
+- **构建工具**：Maven 3.6+ / Node.js 18+
+
+### 2.2. 后端配置文件结构
+```yaml
+# application-dev.yml
+server:
+  port: 8080
+  servlet:
+    context-path: /jeecg-boot
+
+spring:
+  datasource:
+    dynamic:
+      datasource:
+        master:
+          url: jdbc:mysql://127.0.0.1:3306/jeecg-boot
+          username: root
+          password: 123456
+  redis:
+    host: 127.0.0.1
+    port: 6379
+```
+
+### 2.3. 前端环境配置
+```bash
+# .env.development
+VITE_PORT=3100
+VITE_PUBLIC_PATH=/
+VITE_PROXY=[["/jeecg-boot","http://localhost:8080"]]
+VITE_GLOB_APP_TITLE=JeecgBoot企业级低代码平台
+VITE_GLOB_API_URL=/jeecg-boot
+VITE_GLOB_UPLOAD_URL=/jeecg-boot/sys/common/upload
+
+# 微前端配置
+VITE_GLOB_APP_OPEN_QIANKUN=false
+VITE_GLOB_QIANKUN_MICRO_APP_NAME=
+VITE_GLOB_QIANKUN_MICRO_APP_ENTRY=
+```
+
+## 3. 构建和部署流程
+
+### 3.1. 构建命令
+- **后端构建**：`mvn clean package`
+- **前端构建**：`pnpm build`
+
+### 3.2. 前端构建配置（Vite）
+```typescript
+// vite.config.ts 核心配置
+export default {
+  base: isQiankunMicro ? MICRO_APP_ENTRY : PUBLIC_PATH,
+  plugins: [
+    vue(),                      // Vue 3支持
+    vueJsx(),                   // JSX支持
+    vueSetupExtend(),           // setup扩展
+    UnoCSS(),                   // 原子化CSS
+    ...configQiankunMicroPlugin(), // 微前端支持
+    ...configSvgIconsPlugin(),     // SVG图标
+    ...configMockPlugin(),         // Mock数据
+    ...configThemePlugin(),        // 主题切换
+    ...configCompressPlugin()      // 生产压缩
+  ],
+  build: {
+    target: 'es2015',
+    rollupOptions: {
+      // 代码分包策略
+      manualChunks: {
+        'vue-vendor': ['vue', 'vue-router'],
+        'antd-vue-vendor': ['ant-design-vue'],
+        'vxe-table-vendor': ['vxe-table', 'xe-utils'],
+        'echarts-vendor': ['echarts']
+      }
+    }
+  }
+}
+```
+
+### 3.3. 部署模式
+
+#### 3.3.1. 传统部署 (Nginx)
+```bash
+# 1. 构建前端
+pnpm build
+
+# 2. 部署到Nginx
+# nginx.conf:
+location / {
+  root /path/to/dist;
+  try_files $uri $uri/ /index.html;
+}
+
+location /jeecg-boot/ {
+  proxy_pass http://backend:8080/jeecg-boot/;
+}
+```
+
+#### 3.3.2. Docker部署
+```dockerfile
+# 前端Dockerfile示例
+FROM nginx:alpine
+COPY dist/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+```
+- 项目已支持Docker Compose一键部署。
+
+### 3.4. 微服务部署配置管理
+- **核心原则**: Nacos是唯一事实来源。
+- **问题根源**：服务可能因读取不到配置（如 `thingsboard.host` 为 `null`）而启动失败。这是因为微服务的配置事实来源是Nacos，而开发者可能忘记将单体模式下`application-dev.yml`中的特有配置同步到Nacos。
+- **最佳实践**：在新建或迁移一个微服务时，必须仔细盘点该模块所有特有的配置项（如TDengine连接信息、ThingsBoard地址等），并确保将它们完整地添加到Nacos对应的配置文件中（通常是 `jeecg-dev.yaml`）。绝不能遗漏任何一个在单体模式下存在的配置。
+
+## 4. 调试和测试方法
+- **后端调试**：IDEA直接启动主类
+- **前端调试**：`pnpm dev`热重载开发
+- **API测试**：Swagger UI界面测试
+- **日志查看**：logback日志输出
+
+## 5. 前端性能优化策略
+- **代码分包**：按路由和第三方库分包
+- **懒加载**：路由组件和重型组件懒加载
+- **Tree Shaking**：自动移除未使用代码
+- **CDN加速**：第三方库使用CDN
+- **Gzip压缩**：生产环境资源压缩
+- **缓存策略**：合理配置HTTP缓存
