@@ -1,117 +1,174 @@
 package org.jeecg.modules.animalhusbandry.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.jeecg.modules.animalhusbandry.entity.AhDevice;
+import org.jeecg.modules.animalhusbandry.service.IAhDeviceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import javax.annotation.PostConstruct;
 import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * @Description: TDengine时序数据服务实现
- * @Author: AI Assistant
- * @Date: 2025-01-15
- * @Version: V1.0
- */
 @Service
 @Slf4j
 public class TDengineTimeSeriesServiceImpl {
+
+    private static final String STABLE_NAME = "telemetry_data";
 
     @Autowired
     @Qualifier("tdengineJdbcTemplate")
     private JdbcTemplate tdengineJdbcTemplate;
 
-    /**
-     * 获取设备时序遥测数据
-     * @param deviceId 设备ID (如: DEV-CAP-001)
-     * @param keys 遥测键名，多个用逗号分隔 (如: Temperature,Gastric_momentum)
-     * @param startTs 开始时间戳(毫秒)
-     * @param endTs 结束时间戳(毫秒)
-     * @return 按键名分组的时序数据
-     */
-    public Map<String, List<Map<String, Object>>> getTimeSeriesData(String deviceId, String keys, Long startTs, Long endTs) {
-        Map<String, List<Map<String, Object>>> result = new HashMap<>();
-        
-        if (deviceId == null || keys == null || startTs == null || endTs == null) {
-            log.warn("TDengine查询参数不完整: deviceId={}, keys={}, startTs={}, endTs={}", deviceId, keys, startTs, endTs);
-            return result;
+    @Autowired
+    private IAhDeviceService ahDeviceService;
+
+    @PostConstruct
+    public void init() {
+        createSuperTable();
+    }
+
+    private void createSuperTable() {
+        try {
+            String sql = "CREATE STABLE IF NOT EXISTS " + STABLE_NAME + " (" +
+                         "ts TIMESTAMP, " +
+                         "raw_data NCHAR(16374)) " +
+                         "TAGS (device_name NCHAR(128))";
+            tdengineJdbcTemplate.execute(sql);
+            log.info("TDengine通用遥测超级表 '{}' 初始化成功或已存在。", STABLE_NAME);
+        } catch (DataAccessException e) {
+            log.error("TDengine通用遥测超级表 '{}' 初始化失败: {}", STABLE_NAME, e.getMessage(), e);
+        }
+    }
+    
+    public void saveRawTelemetryData(String deviceName, String message) {
+        if (deviceName == null || deviceName.isEmpty() || message == null || message.isEmpty()) {
+            log.warn("接收到无效的遥测数据，deviceName或message为空。");
+            return;
         }
 
+        String tableName = "dev_" + deviceName.replaceAll("[^a-zA-Z0-9_]", "");
+        
         try {
-            // 分割遥测键名
-            String[] keyArray = keys.split(",");
-            
-            for (String key : keyArray) {
-                String trimmedKey = key.trim();
-                List<Map<String, Object>> dataList = querySingleKey(deviceId, trimmedKey, startTs, endTs);
-                result.put(trimmedKey, dataList);
-            }
-            
-            log.info("TDengine查询成功: deviceId={}, keys={}, 返回数据项={}", deviceId, keys, result.size());
-            return result;
-            
+            createSubTableIfNotExists(tableName, deviceName);
+            String sql = String.format("INSERT INTO %s (ts, raw_data) VALUES (now, ?)", tableName);
+            tdengineJdbcTemplate.update(sql, message);
+            log.info("成功将设备 '{}' 的原始遥测数据插入到TDengine表 '{}'。", deviceName, tableName);
         } catch (DataAccessException e) {
-            log.error("TDengine查询失败: deviceId={}, keys={}, error={}", deviceId, keys, e.getMessage(), e);
-            // 返回空结果而不是抛出异常，避免影响前端显示
-            return result;
+            log.error("插入原始遥测数据到TDengine失败: deviceName={}, tableName={}, error={}", 
+                      deviceName, tableName, e.getMessage(), e);
         }
     }
 
-    /**
-     * 查询单个遥测键的时序数据
-     */
-    private List<Map<String, Object>> querySingleKey(String deviceId, String key, Long startTs, Long endTs) {
-        // 构建TDengine查询SQL
-        String tableName = "telemetry_" + deviceId.toLowerCase().replace("-", "_");
-        String sql = "SELECT ts, " + key + " FROM " + tableName + 
-                    " WHERE ts >= ? AND ts <= ? AND " + key + " IS NOT NULL ORDER BY ts";
-        
-        log.debug("TDengine SQL: {}, params: [{}, {}]", sql, new Date(startTs), new Date(endTs));
-        
+    private void createSubTableIfNotExists(String tableName, String deviceName) {
         try {
-            return tdengineJdbcTemplate.query(sql, new Object[]{new Date(startTs), new Date(endTs)}, 
-                (rs, rowNum) -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("ts", rs.getTimestamp("ts").getTime());
-                    item.put("value", rs.getObject(key));
-                    return item;
-                });
+            String createSql = String.format("CREATE TABLE IF NOT EXISTS %s USING %s TAGS ('%s')",
+                    tableName, STABLE_NAME, deviceName);
+            tdengineJdbcTemplate.execute(createSql);
+        } catch (DataAccessException e) {
+            log.error("创建TDengine子表 '{}' 失败: {}", tableName, e.getMessage());
+            throw e;
+        }
+    }
+
+    public List<Map<String, Object>> getTelemetryHistoryForKey(String deviceId, String telemetryKey, Long startTs, Long endTs) {
+        String devEui = getDevEuiFromBusinessId(deviceId);
+        if (devEui == null) {
+            log.warn("无法根据业务ID '{}' 找到对应的DevEUI，查询中止。", deviceId);
+            return Collections.emptyList();
+        }
+
+        String tableName = "dev_" + devEui.replaceAll("[^a-zA-Z0-9_]", "");
+        String sql = "SELECT ts, raw_data FROM " + tableName + " WHERE ts >= ? AND ts <= ?";
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return tdengineJdbcTemplate.query(sql, new Object[]{new Date(startTs), new Date(endTs)}, (rs, rowNum) -> {
+                try {
+                    String rawJson = rs.getString("raw_data");
+                    JsonNode rootNode = objectMapper.readTree(rawJson);
+                    
+                    JsonNode valueNode = findValueCaseInsensitive(rootNode, telemetryKey);
+                    if (valueNode == null || valueNode.isMissingNode()) {
+                        JsonNode dataNode = rootNode.path("data");
+                        if (!dataNode.isMissingNode()) {
+                             valueNode = findValueCaseInsensitive(dataNode, telemetryKey);
+                        }
+                    }
+
+                    if (valueNode != null && !valueNode.isMissingNode() && !valueNode.isNull()) {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("ts", rs.getTimestamp("ts").getTime());
+                        if (valueNode.isNumber()) {
+                            item.put("value", valueNode.asDouble());
+                        } else {
+                            item.put("value", valueNode.asText());
+                        }
+                        return item;
+                    }
+                } catch (Exception e) {
+                    log.error("解析TDengine中的JSON数据失败, row: {}, error: {}", rs.getString("raw_data"), e.getMessage());
+                }
+                return null;
+            }).stream().filter(Objects::nonNull).collect(Collectors.toList());
         } catch (Exception e) {
-            log.error("查询TDengine表 {} 的 {} 字段失败: {}", tableName, key, e.getMessage());
+            log.error("查询设备 {} 的历史遥测数据失败: {}", deviceId, e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    /**
-     * 获取设备最新的遥测快照
-     */
-    public Map<String, Object> getLatestTelemetry(String deviceId) {
-        String tableName = "telemetry_" + deviceId.toLowerCase().replace("-", "_");
-        String sql = "SELECT last(*) FROM " + tableName;
+    public List<Map<String, Object>> getRawTelemetryLog(String deviceId, Long startTs, Long endTs) {
+        String devEui = getDevEuiFromBusinessId(deviceId);
+        if (devEui == null) {
+            log.warn("无法根据业务ID '{}' 找到对应的DevEUI，查询中止。", deviceId);
+            return Collections.emptyList();
+        }
         
+        String tableName = "dev_" + devEui.replaceAll("[^a-zA-Z0-9_]", "");
+        String sql = "SELECT ts, raw_data FROM " + tableName + " WHERE ts >= ? AND ts <= ? ORDER BY ts DESC";
+
         try {
-            List<Map<String, Object>> results = tdengineJdbcTemplate.queryForList(sql);
-            return results.isEmpty() ? Collections.emptyMap() : results.get(0);
+            return tdengineJdbcTemplate.query(sql, new Object[]{new Date(startTs), new Date(endTs)}, (rs, rowNum) -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("ts", rs.getTimestamp("ts").getTime());
+                item.put("value", rs.getString("raw_data"));
+                return item;
+            });
         } catch (Exception e) {
-            log.error("获取设备 {} 最新遥测数据失败: {}", deviceId, e.getMessage());
-            return Collections.emptyMap();
+            log.error("查询设备 {} (DevEUI: {}) 的原始遥测日志失败: {}", deviceId, devEui, e.getMessage());
+            return Collections.emptyList();
         }
     }
 
-    /**
-     * 测试TDengine连接
-     */
-    public boolean testConnection() {
+    private String getDevEuiFromBusinessId(String deviceId) {
+        if (deviceId == null) return null;
         try {
-            tdengineJdbcTemplate.queryForObject("SELECT SERVER_VERSION()", String.class);
-            log.info("TDengine连接测试成功");
-            return true;
+            AhDevice device = ahDeviceService.getById(deviceId);
+            if (device != null) {
+                return device.getDevEui();
+            }
         } catch (Exception e) {
-            log.error("TDengine连接测试失败: {}", e.getMessage());
-            return false;
+            log.error("根据业务ID '{}' 查询设备信息时出错: {}", deviceId, e.getMessage());
         }
+        return null;
+    }
+    
+    private JsonNode findValueCaseInsensitive(JsonNode node, String key) {
+        if (node == null || key == null || !node.isObject()) {
+            return null;
+        }
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            if (entry.getKey().equalsIgnoreCase(key)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 } 

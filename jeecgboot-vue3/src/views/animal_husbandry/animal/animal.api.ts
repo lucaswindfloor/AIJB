@@ -19,6 +19,9 @@ enum Api {
   listAvailableDevices = '/animal_husbandry/device/list', 
   // 【新】根据设备类型获取可绑定的设备列表
   listAvailableDevicesByType = '/animal_husbandry/device/listAvailableForBinding',
+  
+  // 【新】获取原始遥测日志
+  getRawTelemetryLog = '/animal_husbandry/animal/get-raw-telemetry-log',
 }
 
 /**
@@ -111,5 +114,16 @@ export const getTimeSeriesTelemetry = (params: {
   startTs: number;
   endTs: number;
 }) => {
-  return defHttp.get({ url: '/animal_husbandry/ahAnimal/get-timeseries-telemetry', params });
+  return defHttp.get({ url: '/animal_husbandry/animal/get-timeseries-telemetry', params });
+};
+
+/**
+ * 【新】获取设备原始遥测日志
+ */
+export const getRawTelemetryLog = (params: {
+  deviceId: string;
+  startTs: number;
+  endTs: number;
+}) => {
+  return defHttp.get({ url: Api.getRawTelemetryLog, params });
 }; 

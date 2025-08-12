@@ -23,17 +23,17 @@ graph TD
         B1[瘤胃胶囊<br>体温, 活动量] --> C{LoRaWAN 网关};
         B2[动物追踪器<br>GPS位置, 步数] --> C;
         C --> D[物联网平台<br>ThingsBoard];
-        D -- "规则引擎<br>Webhook推送" --> G[jeecg-iot-gateway];
+        D -- "规则引擎<br>推送到Kafka Topic" --> K[Apache Kafka];
     end
 
     subgraph 核心中台层 (PaaS - JeecgBoot)
         subgraph 核心数据库
             E[MySQL 8<br>业务核心数据]
-            F[TDengine / InfluxDB<br>时序遥测数据]
+            F[TDengine<br>时序遥测数据]
         end
-        G(jeecg-iot-gateway<br>物联网网关模块) --> E;
-        G --> F;
-        H(jeecg-module-animal-husbandry<br>畜牧核心业务模块) -- "读写" --> E;
+        K -- "消费" --> H(jeecg-module-animal-husbandry);
+        H -- "写入" --> F;
+        H -- "读写" --> E;
         I(jeecg-ai-service<br>AI分析服务模块) -- "读" --> E & F;
         I -- "写分析结果" --> E;
     end
@@ -52,12 +52,13 @@ graph TD
 *   **数据与物联层:**
     *   **物联网平台 (ThingsBoard):** 负责 LoRaWAN 设备的接入、解码和管理。通过其规则引擎，将解析后的遥测数据实时地以 Webhook 方式 POST 到本系统的物联网网关模块。
     *   **数据存储分离策略:**
-        *   **MySQL:** 由 JeecgBoot 管理，存储核心业务数据，如牲畜档案、设备台账、用户、告警记录、AI分析结果以及**最新的遥测数据快照** (`ah_telemetry_latest`)。此数据库为高频业务查询优化。
-        *   **TDengine/InfluxDB (推荐):** 独立部署的时序数据库，用于存储物联网设备上报的**全部历史遥测数据**（位置、体温、活动量等）。此数据库为AI分析和历史数据图表查询提供高性能支持，并与ThingsBoard平台解耦，保障我们数据资产的独立性。
+        *   **MySQL:** 由 JeecgBoot 管理，存储核心业务数据，如牲畜档案、设备台账、用户、告警记录、AI分析结果。此数据库为高频业务查询优化。
+        *   **TDengine:** 独立部署的时序数据库，用于存储物联网设备上报的**全部历史遥测数据的原始JSON**。此数据库为AI分析和历史数据图表查询提供高性能支持。
 
 *   **核心中台层 (基于 JeecgBoot):**
-    *   `jeecg-module-animal-husbandry` (核心业务模块): 继承自现有模块，负责牲畜档案、设备（胶囊、追踪器）管理、设备与牲畜的绑定、告警管理等核心功能。
-    *   `jeecg-iot-gateway` (新建-物联网网关模块): 核心职责是提供一个API端点，用于接收并处理来自 ThingsBoard 的数据推送。它会将数据解析、校验、分发，分别存入时序数据库（TDengine）和业务数据库（MySQL），并能触发实时告警逻辑。
+    *   `jeecg-module-animal-husbandry` (核心业务模块): 继承自现有模块，负责牲畜档案、设备管理、设备与牲畜的绑定、告警管理等核心功能。**该模块内包含了Kafka消费者服务和TDengine时序数据服务**，负责：
+        *   **`TelemetryConsumerService`**: 消费来自Kafka的遥测数据，并调用TDengine服务存入原始JSON。
+        *   **`TDengineTimeSeriesServiceImpl`**: 封装对TDengine的所有操作，包括数据写入，以及为前端提供解析后的图表数据和原始日志数据。
     *   `jeecg-ai-service` (新建-AI分析服务模块): 内置健康评估、发情监测等AI模型。通过定时任务或事件触发，从数据库中拉取牲畜的生理指标时序数据进行分析，并将分析结论（如健康评分、发情概率、疾病风险）更新回该牲畜的档案中。
 
 *   **展现与交互层:**
@@ -328,17 +329,10 @@ graph TD
     *   `AnimalService`: 封装牲畜档案的核心业务，包括调用`IThingsBoardService`在设备绑定/解绑时更新ThingsBoard的服务端属性。
     *   `DeviceService`/`DeviceMonitorService`: 分别实现设备台账和设备监控的业务逻辑。
     *   `DashboardService`: 封装驾驶舱的数据聚合逻辑。
+    
+#### 4.1.2 ~~`jeecg-iot-gateway` (物联网网关模块) - **新建**~~ (已废弃)
+> **设计演进**: 经过迭代，我们决定将Kafka数据消费的逻辑直接内聚在核心业务模块 `jeecg-module-animal-husbandry` 中，而不是创建一个独立的网关模块。这简化了项目结构，并使得业务逻辑更加集中。
 
-#### 4.1.2 `jeecg-iot-gateway` (物联网网关模块) - **新建**
-
-*   **Controller:**
-    *   `ThingsboardWebhookController`: 提供一个 RESTful API 端点（如 `/api/iot/thingsboard/data-push`），专门用于接收 ThingsBoard 规则引擎推送的遥测数据。
-*   **Service/ServiceImpl:**
-    *   `DataProcessingService`: 核心服务，其工作流如下：
-        1.  **接收与校验**: 接收来自 ThingsBoard 的 JSON 数据。
-        2.  **设备识别**: 通过 `dev_eui` 或 `tb_device_id` 识别设备。
-        3.  **数据分发**: 异步写入**时序数据库**，并更新MySQL中的`ah_telemetry_latest`, `ah_animal`, `ah_device`等快照表。
-        4.  **告警触发**: 从`ah_alarm_rule`表中**加载所有启用规则**，与上报数据进行匹配。若触发，则创建`ah_alarm_record`记录。
 
 #### 4.1.3 `jeecg-ai-service` (AI分析服务模块) - **新建**
 
@@ -369,12 +363,12 @@ graph TD
 ### 5.1 实时数据上报与监控流程
 
 1.  **设备 -> ThingsBoard:** 传感器上报数据。
-2.  **ThingsBoard -> Gateway:** Webhook 推送到 `jeecg-iot-gateway`。
-3.  **数据处理与入库:** `DataProcessingService` 解析数据，存入时序库和MySQL快照表。
-4.  **实时推送至前端:**
-    *   **方案A (轮询 - 推荐):** 前端 `MapMonitor.vue` 组件通过定时器（如每15秒）调用 `DashboardController` 的 `/map-data` 接口，一次性拉取所有在线牲畜的最新状态和位置。
-    *   **补充 (死信队列)**：`jeecg-iot-gateway` 对于处理失败的数据，应推送到一个**Redis死信队列**中供后续排查。
-5.  **前端渲染:** `MapMonitor.vue` 组件更新地图上的点位。
+2.  **ThingsBoard -> Kafka:** ThingsBoard规则引擎将处理后的JSON数据推送到指定的Kafka Topic。
+3.  **数据消费与入库:** `jeecg-module-animal-husbandry` 中的 `TelemetryConsumerService` 消费Kafka消息，并调用 `TDengineTimeSeriesServiceImpl` 将原始JSON数据存入TDengine。
+4.  **前端数据拉取:**
+    *   **驾驶舱 (轮询):** `MapMonitor.vue` 组件通过定时器调用 `DashboardController` 的 `/map-data` 接口，拉取牲畜最新状态和位置（数据源自MySQL快照表）。
+    *   **详情页 (按需):** `AnimalDetailDrawer.vue` 在需要时调用 `AhAnimalController` 的接口，后者通过 `TDengineTimeSeriesServiceImpl` 从TDengine中查询特定时间范围的历史数据。
+5.  **前端渲染:** 组件更新地图或图表。
 
 ### 5.2 AI 分析与状态更新流程
 
@@ -395,6 +389,7 @@ graph TD
 *   **使用远程过程调用 (RPC):**
     *   本平台向设备下发指令时（如FOTA升级、请求重启），应调用 ThingsBoard 的双向或单向RPC接口。
     *   **价值：** 利用ThingsBoard成熟的设备通信链路，无需本平台直接处理复杂的物联网协议。
+    *   **注意**: 远程指令的下发API应位于 `DeviceMonitorController` 中。
 
 ## 6. 开发实施建议
 
@@ -405,8 +400,8 @@ graph TD
         *   完成后端 `jeecg-module-animal-husbandry` 的开发，重点实现牲畜和设备的CRUD，以及两者之间的绑定/解绑功能。
         *   完成前端 `AnimalList.vue` 和 `DeviceList.vue` 页面的联调。
     *   **第二步 (打通数据链路):**
-        *   开发 `jeecg-iot-gateway` 模块，并与 ThingsBoard 对接，实现数据自动上报和入库。
-        *   开发前端**牧场驾驶舱** (`dashboard/index.vue`)，实现地图上牲畜位置的实时更新（可先采用轮询方式）。
+        *   在 `jeecg-module-animal-husbandry` 中开发Kafka消费者，并与 ThingsBoard 对接，实现数据自动上报和入库TDengine。
+        *   开发前端**牧场驾驶舱** (`dashboard/index.vue`)，实现地图上牲畜位置的实时更新。
     *   **第三步 (智能化升级):**
         *   开发 `jeecg-ai-service` 模块，并集成初步的基于规则的AI模型。
         *   开发前端**AI预警中心** (`alarm/AlarmCenter.vue`)。

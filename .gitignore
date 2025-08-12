@@ -1,6 +1,21 @@
 
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Build output
+**/target/
+**/out/
+**/dist/
+
 # dependencies
 /jeecgboot-vue3/node_modules/
 
 # Logs
 logs/
+*.log
+hs_err_pid*
+
+# OS generated files
+.DS_Store

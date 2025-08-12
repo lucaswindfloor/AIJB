@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.HashMap;
 
 @Service
 @Slf4j
@@ -56,16 +57,35 @@ public class DeviceMonitorServiceImpl implements IDeviceMonitorService {
 
     @Override
     public Map<String, List<Map<String, Object>>> getTelemetryHistory(TelemetryHistoryQueryDto queryDto) {
-        log.info("查询TDengine时序数据: deviceId={}, keys={}, startTs={}, endTs={}", 
+        log.info("查询TDengine时序数据: deviceId={}, keys={}, startTs={}, endTs={}",
                  queryDto.getDeviceId(), queryDto.getKeys(), queryDto.getStartTs(), queryDto.getEndTs());
         
+        Map<String, List<Map<String, Object>>> result = new HashMap<>();
+        String deviceId = queryDto.getDeviceId();
+        String keys = queryDto.getKeys();
+        Long startTs = queryDto.getStartTs();
+        Long endTs = queryDto.getEndTs();
+
+        if (!StringUtils.hasText(deviceId) || !StringUtils.hasText(keys) || startTs == null || endTs == null) {
+            log.warn("时序数据查询参数不完整");
+            return result;
+        }
+
         try {
-            return tdengineService.getTimeSeriesData(
-                queryDto.getDeviceId(), 
-                queryDto.getKeys(), 
-                queryDto.getStartTs(), 
-                queryDto.getEndTs()
-            );
+            // 新方法一次查询一个key，所以我们需要遍历
+            for (String key : keys.split(",")) {
+                String trimmedKey = key.trim();
+                if (StringUtils.hasText(trimmedKey)) {
+                    List<Map<String, Object>> dataList = tdengineService.getTelemetryHistoryForKey(
+                        deviceId, 
+                        trimmedKey, 
+                        startTs, 
+                        endTs
+                    );
+                    result.put(trimmedKey, dataList);
+                }
+            }
+            return result;
         } catch (Exception e) {
             log.error("查询TDengine时序数据失败", e);
             // 失败时返回空数据，避免前端显示错误

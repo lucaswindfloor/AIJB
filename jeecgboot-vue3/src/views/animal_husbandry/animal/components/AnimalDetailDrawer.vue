@@ -14,14 +14,21 @@
         <Tabs v-model:activeKey="activeKey">
           <!-- 页签一：数据概览 -->
           <TabPane key="DASHBOARD" tab="数据概览">
-            <div class="chart-grid">
+            <div class="chart-container">
               <TelemetryChart
                 v-if="capsuleDevice"
                 :device-id="capsuleDevice.id"
                 telemetry-key="Temperature"
                 title="体温核心趋势 (胶囊)"
                 unit="℃"
-                :y-axis-config="{ min: 36, max: 42 }"
+                :y-axis-config="{ min: 20, max: 42 }"
+              />
+              <TelemetryChart
+                v-if="capsuleDevice"
+                :device-id="capsuleDevice.id"
+                telemetry-key="Gastric_momentum"
+                title="胃动力核心趋势 (胶囊)"
+                unit=""
               />
               <TelemetryChart
                 v-if="trackerDevice"
@@ -36,30 +43,38 @@
           
           <!-- 页签二：设备详情与遥测 -->
           <TabPane key="DEVICES" tab="设备详情与遥测">
-            <Collapse v-if="deviceDataSource.length > 0" accordion>
-              <CollapsePanel v-for="device in deviceDataSource" :key="device.id">
-                 <template #header>
-                  <div class="device-panel-header">
-                    <span>{{ device.name }} ({{ device.deviceType_dictText }})</span>
-                    <div class="header-tags">
-                      <Tag :color="device.status === 'ACTIVE' ? 'green' : 'orange'">{{ device.status_dictText }}</Tag>
-                      <Tag color="blue">电量: {{ device.batteryLevel || '-' }}%</Tag>
-                    </div>
-                  </div>
-                </template>
-                <!-- 胶囊专属遥测数据 -->
-                <div v-if="device.deviceType === 'CAPSULE'" class="chart-grid">
-                   <TelemetryChart :device-id="device.id" telemetry-key="Temperature" title="体温历史曲线" unit="℃" :y-axis-config="{ min: 36, max: 42 }" />
-                   <TelemetryChart :device-id="device.id" telemetry-key="Gastric_momentum" title="活动量历史曲线" unit="" />
+            <div class="device-section">
+              <div v-if="deviceDataSource.length > 0">
+                 <!-- 时间范围选择器 -->
+                <div class="toolbar">
+                    <a-range-picker v-model:value="queryTimeRange" show-time />
+                    <a-button type="primary" @click="handleQueryRawLog" :loading="rawLogLoading">查询所有设备日志</a-button>
                 </div>
-                <!-- 追踪器专属遥测数据 -->
-                 <div v-if="device.deviceType === 'TRACKER'" class="chart-grid">
-                   <TelemetryChart :device-id="device.id" telemetry-key="step" title="步数历史曲线" unit="步" />
-                   <!-- TODO: 未来可在此添加地图组件 -->
+                <div class="log-viewer" v-if="!rawLogLoading">
+                    <Collapse accordion>
+                        <CollapsePanel v-for="deviceLog in rawLogData" :key="deviceLog.deviceId">
+                            <template #header>
+                                <span>设备: {{ deviceLog.deviceName }} ({{ deviceLog.deviceType }}) - 共 {{ deviceLog.logs.length }} 条日志</span>
+                            </template>
+                            <Collapse accordion>
+                                <CollapsePanel v-for="(log, index) in deviceLog.logs" :key="index">
+                                    <template #header>
+                                        <span>{{ formatTimestamp(log.ts) }}</span>
+                                    </template>
+                                    <pre>{{ formatJson(log.value) }}</pre>
+                                </CollapsePanel>
+                            </Collapse>
+                            <div v-if="deviceLog.logs.length === 0" class="chart-placeholder">在选定时间范围内无原始数据</div>
+                        </CollapsePanel>
+                    </Collapse>
+                    <div v-if="rawLogData.length === 0" class="chart-placeholder">在选定时间范围内无原始数据</div>
                 </div>
-              </CollapsePanel>
-            </Collapse>
-             <div v-else class="chart-placeholder">暂无绑定设备</div>
+                <div v-else class="chart-placeholder">
+                    <Spin />
+                </div>
+              </div>
+              <div v-else class="chart-placeholder">暂无绑定设备，无法查询日志</div>
+            </div>
           </TabPane>
           
           <!-- 页签三：告警历史 -->
@@ -83,17 +98,23 @@
   import { BasicDrawer, useDrawerInner } from '/@/components/Drawer';
   import { Description, DescItem } from '/@/components/Description';
   import { BasicTable, useTable } from '/@/components/Table';
-  import { Spin, Tabs, TabPane, Collapse, CollapsePanel, Tag, Button as AButton } from 'ant-design-vue';
-  import { getById } from '../animal.api';
+  import { Spin, Tabs, TabPane, Collapse, CollapsePanel, Tag, Button as AButton, RangePicker as ARangePicker } from 'ant-design-vue';
+  import { getById, getRawTelemetryLog } from '../animal.api';
   import { h } from 'vue';
   import { useModal } from '/@/components/Modal';
-
-  import LifecycleEventModal from './LifecycleEventModal.vue';
+  import dayjs, { Dayjs } from 'dayjs';
   import TelemetryChart from './TelemetryChart.vue';
+  import LifecycleEventModal from './LifecycleEventModal.vue';
 
   const animalData = ref<any>(null);
   const loading = ref(true);
   const activeKey = ref('DASHBOARD');
+
+  // [V3方案] 新增原始日志相关状态
+  const rawLogData = ref<any[]>([]);
+  const rawLogLoading = ref(false);
+  const queryTimeRange = ref<[Dayjs, Dayjs]>([dayjs().subtract(1, 'day'), dayjs()]);
+
 
   const deviceDataSource = ref<any[]>([]);
   const alarmDataSource = ref([]);
@@ -102,6 +123,52 @@
   // 计算属性，方便在模板中直接使用
   const capsuleDevice = computed(() => deviceDataSource.value.find(d => d.deviceType === 'CAPSULE'));
   const trackerDevice = computed(() => deviceDataSource.value.find(d => d.deviceType === 'TRACKER'));
+
+  // [V3方案] 新增方法
+  function formatTimestamp(ts) {
+    return dayjs(ts).format('YYYY-MM-DD HH:mm:ss');
+  }
+
+  function formatJson(jsonString) {
+      try {
+          const obj = JSON.parse(jsonString);
+          return JSON.stringify(obj, null, 2); // 格式化JSON，2个空格缩进
+      } catch (e) {
+          return jsonString; // 如果解析失败，返回原始字符串
+      }
+  }
+
+  async function handleQueryRawLog() {
+      if (deviceDataSource.value.length === 0) {
+          return;
+      }
+      rawLogLoading.value = true;
+      rawLogData.value = [];
+      try {
+          const [startTs, endTs] = [queryTimeRange.value[0].valueOf(), queryTimeRange.value[1].valueOf()];
+          
+          // 并行查询所有设备的日志
+          const promises = deviceDataSource.value.map(device => 
+              getRawTelemetryLog({ deviceId: device.id, startTs, endTs })
+          );
+          
+          const results = await Promise.all(promises);
+          
+          // 组装数据
+          rawLogData.value = deviceDataSource.value.map((device, index) => ({
+              deviceId: device.id,
+              deviceName: device.name,
+              deviceType: device.deviceType_dictText,
+              logs: results[index] || [],
+          }));
+
+      } catch (error) {
+          console.error("查询原始遥测日志失败", error);
+      } finally {
+          rawLogLoading.value = false;
+      }
+  }
+
 
   // Schemas for descriptions (保持不变)
   const basicInfoSchema: DescItem[] = [
@@ -167,6 +234,7 @@
     deviceDataSource.value = [];
     alarmDataSource.value = [];
     lifecycleDataSource.value = [];
+    rawLogData.value = []; // [V3方案] 清空原始日志
 
     try {
         const res = await getById({ id: data.record.id });
@@ -208,10 +276,10 @@
     font-weight: 500;
     margin: 24px 0 16px 0;
   }
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 16px;
+  .chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
   }
   .chart-placeholder {
     height: 300px;
@@ -227,5 +295,18 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
+  }
+  .log-viewer {
+    margin-top: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #d9d9d9;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
   }
 </style> 

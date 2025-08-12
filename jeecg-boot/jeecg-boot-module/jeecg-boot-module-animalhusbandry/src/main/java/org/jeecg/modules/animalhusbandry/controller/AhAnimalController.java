@@ -197,8 +197,7 @@ public class AhAnimalController extends JeecgController<AhAnimal, IAhAnimalServi
         log.info("获取牲畜时序数据: deviceId={}, key={}, start={}, end={}", deviceId, key, startTs, endTs);
         
         try {
-            Map<String, List<Map<String, Object>>> timeSeriesData = tdengineService.getTimeSeriesData(deviceId, key, startTs, endTs);
-            List<Map<String, Object>> result = timeSeriesData.getOrDefault(key, Collections.emptyList());
+            List<Map<String, Object>> result = tdengineService.getTelemetryHistoryForKey(deviceId, key, startTs, endTs);
             
             // 转换为ECharts格式 [timestamp, value]
             List<List<Object>> chartData = result.stream()
@@ -209,6 +208,26 @@ public class AhAnimalController extends JeecgController<AhAnimal, IAhAnimalServi
         } catch (Exception e) {
             log.error("获取时序数据失败", e);
             return Result.error("获取时序数据失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取原始遥测日志", description = "根据设备ID获取原始遥测JSON日志")
+    @GetMapping("/get-raw-telemetry-log")
+    public Result<?> getRawTelemetryLog(
+            @RequestParam("deviceId") String deviceId,
+            @RequestParam("startTs") Long startTs,
+            @RequestParam("endTs") Long endTs) {
+
+        if (deviceId == null || startTs == null || endTs == null) {
+            return Result.error("参数不完整");
+        }
+
+        try {
+            List<Map<String, Object>> result = tdengineService.getRawTelemetryLog(deviceId, startTs, endTs);
+            return Result.OK(result);
+        } catch (Exception e) {
+            log.error("获取原始遥测日志失败", e);
+            return Result.error("获取原始遥测日志失败: " + e.getMessage());
         }
     }
 

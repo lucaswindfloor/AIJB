@@ -23,6 +23,12 @@
             <artifactId>jeecg-boot-module-parking</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- 添加Spring Kafka依赖 -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
     </dependencies>
 
-</project> 
+</project>

@@ -95,7 +95,20 @@
         endTs,
       });
 
-      chartData.value = response || [];
+      // 【V5 修复】采用更健壮的数据格式检查和转换，兼容多种可能的数据格式
+      chartData.value = (response || []).map(item => {
+        // 兼容后端直接返回 [timestamp, value] 格式的情况
+        if (Array.isArray(item) && item.length === 2) {
+          return item;
+        }
+        // 兼容后端返回 {ts: timestamp, value: value} 格式的情况
+        if (item && item.ts !== undefined && item.value !== undefined) {
+          return [item.ts, item.value];
+        }
+        // 对于无法识别的格式，返回null，后续会过滤掉
+        return null;
+      }).filter(Boolean); // 过滤掉所有null的项
+
       renderChart();
     } catch (error) {
       console.error('获取时序数据失败:', error);
@@ -108,7 +121,13 @@
 
   // 渲染图表
   function renderChart() {
+    // 【V4 修复】如果转换后数据为空，则不渲染
     if (!chartData.value || chartData.value.length === 0) {
+      // 清空旧图表，以防显示残留数据
+      const instance = getInstance();
+      if(instance) {
+        instance.clear();
+      }
       return;
     }
 
