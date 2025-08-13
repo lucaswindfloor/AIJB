@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 /**
  * @Description: 设备信息表
@@ -159,5 +160,15 @@ public class AhDeviceServiceImpl extends ServiceImpl<AhDeviceMapper, AhDevice> i
         // 4. 更新设备状态：改回“闲置”
         device.setStatus("IDLE");
         this.updateById(device);
+    }
+
+    @Override
+    public AhDevice getDeviceByDevEui(String devEui) {
+        if (devEui == null || devEui.trim().isEmpty()) {
+            return null;
+        }
+        LambdaQueryWrapper<AhDevice> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AhDevice::getDevEui, devEui);
+        return this.getOne(queryWrapper);
     }
 } 

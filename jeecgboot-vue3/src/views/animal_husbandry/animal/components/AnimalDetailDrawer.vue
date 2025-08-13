@@ -193,8 +193,8 @@
       },
     },
     { field: 'healthScore', label: '健康评分' },
-    { field: 'latestTemperature', label: '最新体温(℃)' },
-    { field: 'latestActivity', label: '最新活动量' },
+    { field: 'latestTemperature', label: '最新体温(℃)', render: (val) => val != null ? `${val.toFixed(2)}` : '-' },
+    { field: 'latestGastricMomentum', label: '最新胃动量', render: (val) => val != null ? val : '-' },
     { field: 'aiConclusion', label: '最新AI分析结论', span: 4 },
   ];
 

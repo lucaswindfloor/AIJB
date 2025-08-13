@@ -32,4 +32,4 @@ public class AhAnimalDetailVo extends AhAnimal {
      */
     private List<AhAnimalLifecycleEvent> lifecycleEventList;
 
-} 
+}

@@ -162,7 +162,7 @@ public class AhAnimalServiceImpl extends ServiceImpl<AhAnimalMapper, AhAnimal> i
 
     @Override
     public AhAnimalDetailVo getAnimalDetailById(String id) {
-        // 1. 查询牲畜基本信息
+        // 1. 查询牲畜基本信息 (已经包含了最新的遥测数据)
         AhAnimal ahAnimal = this.getById(id);
         if (ahAnimal == null) {
             return null;

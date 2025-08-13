@@ -43,4 +43,11 @@ public interface IAhDeviceService extends IService<AhDevice> {
      * @param unbindDTO 包含deviceId的DTO
      */
     void unbindFromAnimal(AhDeviceUnbindDTO unbindDTO);
+
+    /**
+     * 根据DevEUI获取设备信息
+     * @param devEui 设备的LoRaWAN DevEUI
+     * @return 匹配的设备实体，如果未找到则返回null
+     */
+    AhDevice getDeviceByDevEui(String devEui);
 } 

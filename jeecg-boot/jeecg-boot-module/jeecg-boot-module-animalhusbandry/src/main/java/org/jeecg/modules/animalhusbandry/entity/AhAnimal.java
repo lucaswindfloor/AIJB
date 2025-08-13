@@ -93,14 +93,14 @@ public class AhAnimal implements Serializable {
     @Excel(name = "最新体温", width = 15)
     @Schema(description = "最新体温")
     private java.math.BigDecimal latestTemperature;
-    /**最新活动量*/
-    @Excel(name = "最新活动量", width = 15)
-    @Schema(description = "最新活动量")
-    private java.lang.Integer latestActivity;
     /**最新步数*/
     @Excel(name = "最新步数", width = 15)
     @Schema(description = "最新步数")
     private java.lang.Integer latestSteps;
+    /**最新胃动量*/
+    @Excel(name = "最新胃动量", width = 15)
+    @Schema(description = "最新胃动量")
+    private java.lang.String latestGastricMomentum;
 	/**最新AI分析结论*/
 	@Excel(name = "最新AI分析结论", width = 15)
     @Schema(description = "最新AI分析结论")

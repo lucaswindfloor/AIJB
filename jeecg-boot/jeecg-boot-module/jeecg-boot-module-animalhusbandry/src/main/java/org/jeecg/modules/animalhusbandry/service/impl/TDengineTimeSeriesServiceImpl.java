@@ -103,7 +103,33 @@ public class TDengineTimeSeriesServiceImpl {
 
                     if (valueNode != null && !valueNode.isMissingNode() && !valueNode.isNull()) {
                         Map<String, Object> item = new HashMap<>();
-                        item.put("ts", rs.getTimestamp("ts").getTime());
+                        
+                        // 修正后的逻辑：优先使用JSON中的ts，并正确处理字符串和数字两种类型
+                        JsonNode deviceTsNode = findValueCaseInsensitive(rootNode, "ts");
+                        long timestamp;
+
+                        if (deviceTsNode != null && !deviceTsNode.isNull()) {
+                            if (deviceTsNode.isIntegralNumber()) {
+                                // 直接处理数字类型的ts
+                                timestamp = deviceTsNode.asLong() * 1000;
+                            } else if (deviceTsNode.isTextual()) {
+                                try {
+                                    // 尝试将字符串类型的ts解析为数字
+                                    timestamp = Long.parseLong(deviceTsNode.asText()) * 1000;
+                                } catch (NumberFormatException e) {
+                                    log.warn("无法将JSON中的ts字符串 '{}' 解析为数字，将回退使用数据库时间戳。", deviceTsNode.asText());
+                                    timestamp = rs.getTimestamp("ts").getTime(); // 解析失败，使用备用时间
+                                }
+                            } else {
+                                timestamp = rs.getTimestamp("ts").getTime(); // 未知类型，使用备用时间
+                            }
+                        } else {
+                            // JSON中未找到ts，使用备用时间
+                            timestamp = rs.getTimestamp("ts").getTime();
+                        }
+                        
+                        item.put("ts", timestamp);
+
                         if (valueNode.isNumber()) {
                             item.put("value", valueNode.asDouble());
                         } else {
