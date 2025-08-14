@@ -8,30 +8,53 @@ import {
 
 enum Api {
   GetKpiData = '/animal_husbandry/dashboard/kpi',
-  GetMapAnimalData = '/animal_husbandry/dashboard/map-data',
+  GetMapData = '/animal_husbandry/dashboard/map-data',
   GetRecentAlarms = '/animal_husbandry/dashboard/recent-alarms',
-  GetAnimalDetailsForMapTip = '/animal_husbandry/dashboard/map-tip-details',
+  GetFences = '/animal_husbandry/dashboard/fences',
+  GetOutOfBoundsAlarms = '/animal_husbandry/dashboard/out-of-bounds-alarms',
+  GetAllHealthAlarms = '/animal_husbandry/dashboard/all-health-alarms',
 }
 
 /**
- * @description: 获取页面顶部的核心KPI统计数据
+ * @description: Get kpi data
  */
 export const getKpiData = () => {
-  return defHttp.get<DashboardKpiVo>({ url: Api.GetKpiData });
+  return defHttp.get({ url: Api.GetKpiData });
 };
 
 /**
- * @description: 获取所有需要在地图上显示的牲畜数据列表
+ * @description: Get animal map data
  */
-export const getMapAnimalData = () => {
-  return defHttp.get<MapAnimalDataVo[]>({ url: Api.GetMapAnimalData });
+export const getMapData = () => {
+  return defHttp.get({ url: Api.GetMapData });
 };
 
 /**
- * @description: 获取最新的N条告警记录
+ * @description: Get recent alarms
  */
 export const getRecentAlarms = () => {
-  return defHttp.get<RecentAlarmVo[]>({ url: Api.GetRecentAlarms });
+  return defHttp.get({ url: Api.GetRecentAlarms });
+};
+
+/**
+ * @description: Get all enabled fences
+ */
+export const getFences = () => {
+  return defHttp.get({ url: Api.GetFences });
+};
+
+/**
+ * @description: Get out of bounds alarms
+ */
+export const getOutOfBoundsAlarms = () => {
+  return defHttp.get({ url: Api.GetOutOfBoundsAlarms });
+};
+
+/**
+ * @description: Get all health alarms
+ */
+export const getAllHealthAlarms = () => {
+  return defHttp.get({ url: Api.GetAllHealthAlarms });
 };
 
 // 备注：根据设计文档，点击地图点位后弹窗需要更详细信息

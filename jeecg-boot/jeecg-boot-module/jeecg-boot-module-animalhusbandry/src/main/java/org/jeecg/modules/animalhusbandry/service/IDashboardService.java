@@ -29,4 +29,15 @@ public interface IDashboardService {
      */
     List<RecentAlarmVo> getRecentAlarms();
 
+    /**
+     * 获取所有越界的牲畜列表
+     * @return List<RecentAlarmVo>
+     */
+    List<RecentAlarmVo> getOutOfBoundsAlarms();
+
+    /**
+     * 获取所有健康告警的列表
+     * @return List<RecentAlarmVo>
+     */
+    List<RecentAlarmVo> getAllHealthAlarms();
 } 

@@ -30,5 +30,23 @@
         WHERE
             alarm_time >= CURDATE()
     </select>
+    
+    <!-- 获取所有告警记录 -->
+    <select id="getAllAlarms" resultType="org.jeecg.modules.animalhusbandry.vo.RecentAlarmVo">
+        SELECT
+            ar.id,
+            ar.animal_id,
+            an.ear_tag_id,
+            ar.alarm_type,
+            ar.alarm_content,
+            ar.alarm_level,
+            ar.alarm_time
+        FROM
+            ah_alarm_record ar
+        LEFT JOIN
+            ah_animal an ON ar.animal_id = an.id
+        ORDER BY
+            ar.alarm_time DESC
+    </select>
 
 </mapper>

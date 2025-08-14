@@ -27,4 +27,10 @@ public interface AhAlarmRecordMapper extends BaseMapper<AhAlarmRecord> {
      * @return
      */
     int countNewAlarmsToday();
+    
+    /**
+     * 获取所有告警记录
+     * @return
+     */
+    List<RecentAlarmVo> getAllAlarms();
 } 

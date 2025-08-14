@@ -322,6 +322,7 @@ graph TD
     *   `DeviceMonitorController`: **(新增)** 负责**设备监控**，提供获取设备运行时KPI、查询问题设备列表和下发远程指令(RPC)的API。
     *   `DashboardController`: 专为**牧场驾驶舱**提供高度聚合的数据接口，如`/kpi`和`/map-data`，为前端性能优化。
     *   `AlarmRecordController`: 提供告警记录的查询和处理（如批量忽略、标记为已处理）接口。
+    *   `FenceController`: **(新增)** 提供电子围栏的标准增删改查(CRUD)接口。
     *   `AlarmRuleController`: **(新增)** 负责告警规则的增删改查，并提供动态查询遥测字段的辅助接口。
     *   `FirmwareController`: **(新增)** 提供固件的上传、查询和FOTA任务的创建与管理API。
     *   `ReportController`: **(新增)** 为前端报表页面提供API，仅查询`ah_daily_stats_report`等预聚合结果表。
@@ -348,6 +349,7 @@ graph TD
 *   **视图 (View):**
     *   `views/animal_husbandry/dashboard/index.vue`: **牧场驾驶舱**，核心地图监控页面。
     *   `views/animal_husbandry/animal/AnimalList.vue`: **牲畜档案管理**，实现"一畜一档"的列表与详情页。
+    *   `views/animal_husbandry/fence/FenceList.vue`: **(新增)** 电子围栏管理页面，提供围栏的增删改查界面。
     *   `views/animal_husbandry/device/DeviceList.vue`: **设备台账管理**，管理设备资产信息和生命周期。
     *   `views/animal_husbandry/device/DeviceDashboard.vue`: **设备监控仪表盘**，展示设备运行时状态、遥测历史、发送远程指令。
     *   `views/animal_husbandry/alarm/AlarmCenter.vue`: **AI预警中心**，展示和处理所有告警。

@@ -5,7 +5,7 @@
 <script lang="ts" setup>
   import { defineComponent, ref, nextTick, unref, onMounted, watch, PropType } from 'vue';
   import { useScript } from '/@/hooks/web/useScript';
-  import { MapAnimalDataVo } from '../dashboard.model';
+  import { MapAnimalDataVo, FenceVo } from '../dashboard.model';
   import { useMessage } from '/@/hooks/web/useMessage';
 
   // --- 高德地图JS API配置 ---
@@ -25,6 +25,10 @@
       type: Array as PropType<MapAnimalDataVo[]>,
       default: () => [],
     },
+    fenceData: {
+      type: Array as PropType<FenceVo[]>,
+      default: () => [],
+    },
   });
 
   const emit = defineEmits(['marker-click']);
@@ -35,6 +39,7 @@
 
   let mapInstance: any = null; // 地图实例
   let markers: any[] = []; // 地图上的标记点实例
+  let polygons: any[] = []; // [新增] 地图上的围栏多边形实例
   let infoWindow: any = null; // 信息窗体实例
 
   // --- SVG 图标 ---
@@ -103,6 +108,7 @@
           offset: new AMap.Pixel(0, -25),
         });
         updateMarkers(props.mapData); // 初始加载标记
+        drawFences(props.fenceData); // [新增] 初始加载围栏
       });
     } catch (e) {
       createMessage.error('地图加载失败，请检查网络或API Key配置');
@@ -174,6 +180,55 @@
     // mapInstance.setFitView();
   }
 
+  // --- [新增] 绘制电子围栏 ---
+  function drawFences(data: FenceVo[]) {
+    if (!mapInstance) return;
+
+    // 1. 清除旧的多边形
+    mapInstance.remove(polygons);
+    polygons = [];
+
+    if (!data || data.length === 0) {
+      return;
+    }
+
+    const AMap = (window as any).AMap;
+
+    // 2. 添加新的多边形
+    data.forEach((item) => {
+      try {
+        const path = JSON.parse(item.points);
+        if (path && path.length > 0) {
+          const polygon = new AMap.Polygon({
+            path: path,
+            strokeColor: '#FF33FF', // 描边颜色
+            strokeWeight: 6, // 线条宽度
+            strokeOpacity: 0.6, // 描边透明度
+            fillOpacity: 0.2, // 填充透明度
+            fillColor: '#1791fc', // 填充颜色
+            zIndex: 40, // 层级，比Marker低
+          });
+          // [新增] 可以为围栏也添加一些交互，例如显示名称
+          polygon.on('mouseover', () => {
+            infoWindow.setContent(`<div style="font-weight: bold; font-size: 14px;">围栏: ${item.name}</div>`);
+            infoWindow.open(mapInstance, polygon.getBounds().getCenter());
+          });
+          polygon.on('mouseout', () => {
+            infoWindow.close();
+          });
+
+          polygons.push(polygon);
+        }
+      } catch (e) {
+        console.error(`解析围栏[${item.name}]坐标失败`, e);
+      }
+    });
+
+    // 3. 将新多边形批量添加到地图
+    mapInstance.add(polygons);
+  }
+
+
   onMounted(() => {
     initMap();
   });
@@ -183,6 +238,15 @@
     () => props.mapData,
     (newData) => {
       updateMarkers(newData);
+    },
+    { deep: true }
+  );
+
+  // [新增] 监听围栏数据变化，动态更新地图
+  watch(
+    () => props.fenceData,
+    (newData) => {
+      drawFences(newData);
     },
     { deep: true }
   );

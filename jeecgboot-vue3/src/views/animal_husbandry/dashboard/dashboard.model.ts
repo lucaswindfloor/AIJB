@@ -15,14 +15,19 @@ export interface MapAnimalDataVo {
   earTagId: string;
   lon: number;
   lat: number;
-  healthStatus: 'HEALTHY' | 'SUB_HEALTHY' | 'ALARM' | string; // 健康状态
+  healthStatus: 'HEALTHY' | 'SUB_HEALTHY' | 'ALARM';
 }
 
 // 牧场驾驶舱 - /recent-alarms 接口VO
 export interface RecentAlarmVo {
-  id: string;
   animalId: string;
-  earTagId: string; // 后端需要join查询提供
+  earTagId: string;
   alarmContent: string;
-  alarmLevel: 'WARN' | 'CRITICAL' | string;
+  alarmTime: string;
+}
+
+export interface FenceVo {
+  id: string;
+  name: string;
+  points: string; // JSON string of points
 } 
