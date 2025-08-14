@@ -53,6 +53,68 @@
         .sidebar-menu li.active, .sidebar-menu li:hover {
             background-color: var(--primary-color);
         }
+        .fence-polygon {
+            position: absolute;
+            background-color: rgba(23, 145, 252, 0.2);
+            border: 2px dashed #1791fc;
+            width: 100%;
+            height: 100%;
+        }
+        .interactive-map-demo {
+            background: #e5e3df; /* 浅地图底色 */
+            background-image:
+                linear-gradient(rgba(180, 180, 180, .3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(180, 180, 180, .3) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .map-zoom-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.3);
+            z-index: 2;
+        }
+        .map-zoom-controls button {
+            display: block;
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: none;
+            font-size: 20px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .map-zoom-controls button:last-child {
+            border-bottom: none;
+        }
+        .map-vertex {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            color: var(--primary-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+        .map-tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            transform: translate(10px, -35px);
+            white-space: nowrap;
+            z-index: 4;
+        }
         .main-content {
             flex-grow: 1;
             display: flex;
@@ -272,6 +334,7 @@
         <ul class="sidebar-menu">
             <li class="active" onclick="switchPage('dashboard')">牧场驾驶舱</li>
             <li onclick="switchPage('animals')">牲畜档案管理</li>
+            <li onclick="switchPage('fences')">电子围栏管理</li>
             <li onclick="switchPage('device_dashboard')">设备监控</li>
             <li onclick="switchPage('devices')">设备台账管理</li>
             <li onclick="switchPage('alarms')">AI预警中心</li>
@@ -310,6 +373,7 @@
                 <div class="dashboard-main">
                     <div class="map-container card">
                         地图监控区域
+                        <div class="fence-polygon"></div>
                         <div class="animal-dot dot-green" style="top: 20%; left: 30%;"></div>
                         <div class="animal-dot dot-green" style="top: 25%; left: 33%;"></div>
                         <div class="animal-dot dot-yellow" style="top: 50%; left: 50%;"></div>
@@ -384,6 +448,56 @@
                                 <td>98</td>
                                 <td>一切正常</td>
                                 <td class="action-buttons"><button onclick="showModal('modal-animal-details')">详情</button><button>已绑定</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 电子围栏管理页面 -->
+            <div id="fences" class="page">
+                <div class="card">
+                    <div class="toolbar">
+                        <input type="text" placeholder="围栏名称">
+                        <button>查询</button>
+                        <button class="primary" onclick="showModal('modal-add-edit-fence')">新增围栏</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>围栏名称</th>
+                                <th>描述</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1号草场-核心区</td>
+                                <td>用于核心牛群放牧</td>
+                                <td><span class="tag tag-active">已启用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-add-edit-fence')">编辑</button>
+                                    <button onclick="showConfirmationModal('确认禁用', '您确定要禁用此围栏吗？', '禁用后，与此围栏相关的越界告警将不会触发。', '确认禁用')">禁用</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>隔离区</td>
+                                <td>用于新购入或生病的牲畜</td>
+                                <td><span class="tag tag-active">已启用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-add-edit-fence')">编辑</button>
+                                    <button onclick="showConfirmationModal('确认禁用', '您确定要禁用此围栏吗？', '禁用后，与此围栏相关的越界告警将不会触发。', '确认禁用')">禁用</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>水源保护区</td>
+                                <td>禁止牲畜入内</td>
+                                <td><span class="tag tag-inactive">已禁用</span></td>
+                                <td class="action-buttons">
+                                    <button onclick="showModal('modal-add-edit-fence')">编辑</button>
+                                     <button onclick="showConfirmationModal('确认启用', '您确定要启用此围栏吗？', '', '确认启用')">启用</button>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -768,7 +882,7 @@
         <div class="modal-content">
             <div class="modal-header">新增设备台账</div>
             <div class="modal-body">
-                <p style="color: var(--text-color-secondary); margin-top: 0; margin-bottom: 24px;">在此处登记新采购的设备。登记后，设备状态为“库存中”，可以被后续绑定到牲畜。设备的在线状态将在首次上报数据后自动更新。</p>
+                <p style="color: var(--text-color-secondary); margin-top: 0; margin-bottom: 24px;">在此处登记新采购的设备。登记后，设备状态为"库存中"，可以被后续绑定到牲畜。设备的在线状态将在首次上报数据后自动更新。</p>
                 <div class="form-group"><label>DevEUI</label><input type="text" placeholder="请输入设备外壳上的16位DevEUI"></div>
                 <div class="form-group"><label>设备名称</label><input type="text" placeholder="为设备设置一个易于识别的名称"></div>
                 <div class="form-group"><label>设备类型</label>
@@ -1090,7 +1204,7 @@
                     <label style="padding-top: 8px;">备注说明</label>
                     <textarea rows="4" style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" placeholder="（选填）详细描述问题或操作要求"></textarea>
                 </div>
-                <p class="warning-text" style="font-size: 13px; margin-top: 16px;">注意：确认后，该设备在“设备台账”中的状态将自动变更为“维保中”，在维保完成前无法被绑定。</p>
+                <p class="warning-text" style="font-size: 13px; margin-top: 16px;">注意：确认后，该设备在"设备台账"中的状态将自动变更为"维保中"，在维保完成前无法被绑定。</p>
             </div>
             <div class="modal-footer">
                 <button class="btn-default" onclick="closeModal('modal-monitor-maintenance')">取消</button>
@@ -1132,7 +1246,7 @@
             <div class="modal-header">忽略告警</div>
             <div class="modal-body">
                 <p>您确定要忽略此条告警吗？</p>
-                <p style="color: var(--text-color-secondary); font-size: 13px;">忽略后，该告警的状态将变为“已忽略”，并不再计入待处理列表。建议仅对确认为误报的告警执行此操作。</p>
+                <p style="color: var(--text-color-secondary); font-size: 13px;">忽略后，该告警的状态将变为"已忽略"，并不再计入待处理列表。建议仅对确认为误报的告警执行此操作。</p>
                  <div class="form-group" style="margin-top: 20px;">
                     <label>忽略原因 (可选)</label>
                     <input type="text" placeholder="例如：传感器数据波动导致误报">
@@ -1304,6 +1418,67 @@
             <div class="modal-footer">
                 <button class="btn-default" onclick="closeModal('modal-fota-create-task')">取消</button>
                 <button class="btn-primary" onclick="closeModal('modal-fota-create-task')">确认并启动任务</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/编辑电子围栏 Modal -->
+    <div id="modal-add-edit-fence" class="modal-overlay" onclick="closeOnOverlay(event)">
+        <div class="modal-content" style="width: 80vw; max-width: 1000px;">
+            <div class="modal-header">新增/编辑电子围栏</div>
+            <div class="modal-body" style="display: flex; gap: 24px;">
+                <div style="width: 350px; flex-shrink: 0;">
+                    <div class="form-group"><label>围栏名称</label><input type="text" value="1号草场-核心区"></div>
+                    <div class="form-group"><label>状态</label>
+                        <div class="ant-radio-group">
+                            <label><input type="radio" name="fence-status" checked> 启用</label>
+                            <label><input type="radio" name="fence-status"> 禁用</label>
+                        </div>
+                    </div>
+                    <div class="form-group" style="align-items: flex-start;">
+                        <label style="padding-top: 8px;">描述</label>
+                        <textarea rows="4" style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;">用于核心牛群放牧</textarea>
+                    </div>
+                     <div class="form-group" style="align-items: flex-start;">
+                        <label style="padding-top: 8px;">坐标点</label>
+                        <textarea rows="8" readonly style="flex-grow: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; background-color: #f5f5f5; font-size: 12px; line-height: 1.5;">[ [119.745, 49.225], [119.780, 49.228], [119.790, 49.210], [119.750, 49.205] ]</textarea>
+                    </div>
+                </div>
+                <div style="flex-grow: 1; position: relative;">
+                    <div class="map-container interactive-map-demo" style="height: 100%; min-height: 400px;">
+                        <!-- 模拟绘制过程 -->
+                        <svg width="100%" height="100%" style="position:absolute; top:0; left:0; z-index: 2;">
+                           <polygon points="100,80 380,100 420,280 150,300" 
+                                    style="fill:rgba(23,145,252,0.3); stroke:#1791fc; stroke-width:2;"/>
+                           <line x1="150" y1="300" x2="180" y2="180" style="stroke:#1791fc; stroke-width:2; stroke-dasharray: 5,5;"/>
+                        </svg>
+
+                        <div class="map-vertex" style="top: 80px; left: 100px;">1</div>
+                        <div class="map-vertex" style="top: 100px; left: 380px;">2</div>
+                        <div class="map-vertex" style="top: 280px; left: 420px;">3</div>
+                        <div class="map-vertex" style="top: 300px; left: 150px;">4</div>
+                        
+                        <!-- 模拟鼠标和提示 -->
+                        <div style="position: absolute; top: 180px; left: 180px; z-index: 3;">
+                            <svg width="24" height="24" viewBox="0 0 1024 1024" fill="#1791fc"><path d="M512 0l-512 1024 512-219.428571 512 219.428571z"></path></svg>
+                            <div class="map-tooltip">单击确定下个点，双击结束</div>
+                        </div>
+
+                        <!-- 模拟缩放控件 -->
+                        <div class="map-zoom-controls">
+                            <button>+</button>
+                            <button>-</button>
+                        </div>
+                    </div>
+                     <div style="position: absolute; top: 12px; left: 12px; z-index: 4;">
+                        <button class="btn-primary" style="padding: 6px 15px;">开始绘制</button>
+                        <button class="btn-default" style="padding: 6px 15px; margin-left: 8px;">清除绘制</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-default" onclick="closeModal('modal-add-edit-fence')">取消</button>
+                <button class="btn-primary" onclick="closeModal('modal-add-edit-fence')">确认</button>
             </div>
         </div>
     </div>

@@ -45,7 +45,7 @@
   const { createMessage } = useMessage();
 
   const loading = ref(true);
-  let timer: Nullable<NodeJS.Timer> = null;
+  let timer: any = null;
 
   // --- 响应式数据 ---
   const kpiData = reactive<Partial<DashboardKpiVo>>({});

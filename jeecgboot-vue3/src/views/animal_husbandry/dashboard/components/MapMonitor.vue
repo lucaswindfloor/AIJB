@@ -89,7 +89,7 @@
       const AMap = (window as any).AMap;
       mapInstance = new AMap.Map(wrapEl, {
         zoom: 13, // 调整缩放级别以获得更合适的初始视野
-        center: [119.688, 49.210], // 更新为新坐标点的中心区域
+        center: [112.85126, 28.246939], // 更新为新坐标点的中心区域
         viewMode: '2D',
         // [修复] 移除 grayscale 风格，恢复地图默认色彩
         // mapStyle: 'amap://styles/whitesmoke',
