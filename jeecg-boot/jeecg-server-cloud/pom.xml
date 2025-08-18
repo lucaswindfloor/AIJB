@@ -18,7 +18,9 @@
         <module>jeecg-cloud-nacos</module>
         <module>jeecg-system-cloud-start</module>
         <module>jeecg-demo-cloud-start</module>
-        
+        <module>jeecg-animalhusbandry-cloud-start</module>
+        <!-- 新增AI微服务启动模块 -->
+        <module>jeecg-ai-service-cloud-start</module>
         <!-- 监控和测试例子 -->
         <module>jeecg-visual</module>
     </modules>

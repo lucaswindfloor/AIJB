@@ -1,5 +1,5 @@
 server:
-  port: 9999
+  port: 8080 # 将网关端口从冲突的9999修改为标准的8080
 
 knife4j:
   gateway:

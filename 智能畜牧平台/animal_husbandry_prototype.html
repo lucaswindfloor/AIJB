@@ -169,6 +169,15 @@
             font-weight: normal;
             margin-left: 8px;
         }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .card-header h3 {
+            margin-bottom: 0 !important;
+        }
         .dashboard-main {
             display: flex;
             gap: 24px;
@@ -382,13 +391,25 @@
                         <div class="animal-dot dot-green" style="top: 65%; left: 62%;"></div>
                     </div>
                     <div class="right-panel">
+                        <div class="card list-card" style="margin-bottom: 24px;">
+                            <div class="card-header">
+                                <h3>越界告警</h3>
+                                <a href="#">更多</a>
+                            </div>
+                            <ul>
+                                <li><span>耳标 0078 - 电子围栏越界</span> <span class="tag tag-warn">警告</span></li>
+                                <li><span>耳标 0155 - 离开指定牧区</span> <span class="tag tag-warn">警告</span></li>
+                            </ul>
+                        </div>
                         <div class="card list-card">
-                            <h3>实时告警</h3>
+                             <div class="card-header">
+                                <h3>健康告警</h3>
+                                <a href="#">更多</a>
+                            </div>
                             <ul>
                                 <li><span>耳标 0035 - 高温告警</span> <span class="tag tag-critical">严重</span></li>
                                 <li><span>耳标 0112 - 活动量过低</span> <span class="tag tag-warn">警告</span></li>
                                 <li><span>耳标 0256 - 疑似发情</span> <span class="tag tag-warn">警告</span></li>
-                                <li><span>耳标 0078 - 电子围栏越界</span> <span class="tag tag-warn">警告</span></li>
                                 <li><span>耳标 0091 - 高温告警</span> <span class="tag tag-critical">严重</span></li>
                             </ul>
                         </div>
