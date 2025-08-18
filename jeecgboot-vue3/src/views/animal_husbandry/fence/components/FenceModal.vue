@@ -125,6 +125,9 @@
 
   function drawSavedFence(pointsStr: string) {
     clearDraw(false);
+    if (!pointsStr) {
+      return;
+    }
     try {
       const path = JSON.parse(pointsStr);
       if (path && path.length > 0) {

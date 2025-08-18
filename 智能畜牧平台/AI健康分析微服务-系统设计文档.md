@@ -91,5 +91,33 @@ graph TD
 - **配置**: 规则的阈值未来可考虑放入Nacos配置中心，实现动态调整。
 - **数据表**: 依赖的MySQL表`ah_animal`, `ah_animal_device_link`为现有表，本服务不新建表。
 
+## 7. 附录：核心问题排查与解决过程复盘
+在AI分析微服务的联调测试过程中，我们遇到并解决了一系列典型问题，覆盖了从任务调度、数据源切换到具体业务逻辑的多个层面。本附录旨在记录这些问题的现象、根源及最终解决方案，为后续的维护和迭代提供宝贵经验。
+
+### 7.1. 问题一：调度失败 - 连接超时 (`Read timed out`)
+- **现象**: 在XXL-Job界面手动执行任务时，日志显示“调度结果：失败”，但稍后“执行结果：成功”。调度备注中出现 `Read timed out` 错误。
+- **根源分析**: AI分析任务（特别是首次运行时）涉及大量的数据查询和计算，总执行耗时可能超过XXL-Job调度器默认的HTTP请求超时时间（通常为10-30秒）。调度器因未能及时收到执行器的HTTP响应而提前判定“调度失败”，但执行器本身仍在后台继续执行任务并最终成功。
+- **解决方案**: 在XXL-Job的“任务管理”界面，编辑该任务，在“高级配置”中将**“任务超时时间”**设置为一个更长的值（例如 `120` 秒），确保调度器有足够的时间等待任务执行完成。
+
+### 7.2. 问题二：数据源切换失败 (MySQL `Unknown error 1146`)
+- **现象**: AI服务在尝试查询TDengine时，后台日志抛出来自**MySQL驱动**的`java.sql.SQLSyntaxErrorException: Unknown error 1146` (表不存在) 错误。
+- **根源分析**: 调用链始于`HealthAnalysisServiceImpl`中带`@Transactional`注解的方法。该注解导致Spring提前开启了基于默认数据源（MySQL）的事务。当内部代码尝试调用带`@DS("tdengine")`注解的方法时，由于已存在活跃的MySQL事务，**事务的优先级高于数据源切换**，导致`@DS`注解失效，查询被错误地发送到了MySQL。
+- **解决方案**: 在`TDengineServiceImpl`的查询方法上，添加注解`@Transactional(propagation = Propagation.NOT_SUPPORTED)`。该配置会**挂起**外部的MySQL事务，允许数据源临时切换到TDengine，执行查询后再恢复原事务。
+
+### 7.3. 问题三：TDengine表名错误 (TDengine `Table does not exist`)
+- **现象**: 解决了数据源切换问题后，日志中抛出来自**TDengine驱动**的`java.sql.SQLException: Table does not exist`错误。
+- **根源分析**: 对数据关系理解有误。`HealthAnalysisJob`从`ah_animal_device_link`表中获取的`device_id`是`ah_device`表的**主键**，而TDengine中的子表名实际上是由`ah_device`表中的**`dev_eui`**字段拼接而成的。代码错误地将主键ID用作了`dev_eui`。
+- **解决方案**: 重构`HealthAnalysisJob`。在获取到`device_id`后，增加一步数据库查询：先根据`device_id`查询`ah_device`表，获取到正确的`dev_eui`字符串，然后再将这个`dev_eui`传递给分析服务用于后续的TDengine查询。
+
+### 7.4. 问题四：TDengine数据结构与时间戳错误
+- **现象**: 成功查询到TDengine表后，获取不到数据或数据分析结果不符合预期。
+- **根源分析**: 存在两个关键的错误假设：
+    1.  **结构错误**: 假设`temperature`、`step`等生理指标是独立的列，而实际上它们都封装在一个名为`raw_data`的JSON字符串中。
+    2.  **时间戳错误**: 依赖TDengine表自带的`ts`主键列进行时间过滤。该列记录的是**数据入库时间**，而非设备上报的**真实事件时间**。由于Kafka存在数据缓冲，两者可能存在显著差异。
+- **解决方案**:
+    1.  **修正SQL**: 修改`TDengineServiceImpl`中的SQL语句，不再查询独立的生理指标列，而是直接查询`raw_data`列。
+    2.  **采用“先捞取、后过滤”策略**: 在`HealthAnalysisServiceImpl`中，首先从TDengine获取一个较宽时间范围（如过去30天）的`raw_data`列表。然后在Java内存中，逐条解析JSON，获取JSON内部真实的`ts`字段（事件时间戳），并用代码逻辑精确过滤出属于过去24小时的数据，再进行后续的分析计算。这确保了AI分析所用数据在时间上的高精度。
+
+
 ---
 *本文档确认，AI健康分析微服务将作为一个完全独立的系统进行设计和开发，确保与现有系统的松耦合和高内聚。*

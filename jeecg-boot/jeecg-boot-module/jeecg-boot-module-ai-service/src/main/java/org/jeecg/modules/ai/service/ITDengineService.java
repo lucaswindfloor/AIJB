@@ -12,11 +12,11 @@ import java.util.Map;
 public interface ITDengineService {
 
     /**
-     * 根据设备ID和时间范围，查询生理数据
-     * @param deviceId 设备ID (对应TDengine中的子表名)
+     * 根据设备EUI和时间范围，查询生理数据
+     * @param devEui 设备EUI (对应TDengine中的子表名后缀)
      * @param hoursAgo 小时数，查询从现在起过去多少小时的数据
      * @return
      */
-    List<Map<String, Object>> queryPhysiologicalData(String deviceId, int hoursAgo);
+    List<Map<String, Object>> queryPhysiologicalData(String devEui, int hoursAgo);
 
 }

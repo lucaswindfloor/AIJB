@@ -1,5 +1,7 @@
 package org.jeecg.modules.ai.service.impl;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.modules.ai.entity.AhAnimal;
@@ -29,30 +31,59 @@ public class HealthAnalysisServiceImpl extends ServiceImpl<AnimalHealthMapper, A
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void analyzeAnimalHealth(String animalId, String deviceId) {
-        log.info("开始分析牲畜健康状况, animalId: {}, deviceId: {}", animalId, deviceId);
+    public void analyzeAnimalHealth(String animalId, String devEui) {
+        log.info("开始分析牲畜健康状况, animalId: {}, devEui: {}", animalId, devEui);
 
-        // 1. 从TDengine拉取过去24小时数据
-        List<Map<String, Object>> data = tdengineService.queryPhysiologicalData(deviceId, 24);
-        if (data == null || data.isEmpty()) {
-            log.warn("未找到牲畜 {} 的生理数据，分析跳过。", deviceId);
+        // 1. 从TDengine拉取过去30天的数据（范围放宽，以应对数据延迟写入）
+        List<Map<String, Object>> rawDataList = tdengineService.queryPhysiologicalData(devEui, 720); // 720 hours = 30 days
+        if (rawDataList == null || rawDataList.isEmpty()) {
+            log.warn("在过去30天内未找到牲畜(设备EUI: {}) 的任何生理数据，分析跳过。", devEui);
             return;
         }
 
-        // 2. 核心规则分析 (MVP版本)
+        // 2. 在Java内存中，根据JSON中的真实'ts'进行精确过滤
+        long twentyFourHoursAgo = System.currentTimeMillis() / 1000 - 24 * 3600;
+        List<JSONObject> filteredData = rawDataList.stream()
+            .map(row -> {
+                String rawData = (String) row.get("raw_data");
+                if (rawData == null || rawData.isEmpty()) return null;
+                try {
+                    return JSON.parseObject(rawData);
+                } catch (Exception e) {
+                    log.warn("解析raw_data失败, devEui: {}, data: {}", devEui, rawData, e);
+                    return null;
+                }
+            })
+            .filter(json -> {
+                if (json == null || !json.containsKey("ts")) return false;
+                // 使用JSON中的ts进行时间过滤
+                return json.getLongValue("ts") > twentyFourHoursAgo;
+            })
+            .toList();
+
+        if (filteredData.isEmpty()) {
+            log.warn("牲畜(设备EUI: {}) 虽然有历史数据，但在过去24小时内没有新的生理数据，分析跳过。", devEui);
+            return;
+        }
+
+
+        // 3. 核心规则分析 (基于过滤后的精确数据)
         String healthStatus = "健康";
         int healthScore = 100;
         StringBuilder conclusion = new StringBuilder("生理指标正常。");
 
-        // 规则1：体温异常检测
-        // 使用 try-catch 防止数据类型转换异常
+        // 规则1：体温异常检测 (瘤胃胶囊)
         try {
-            double maxTemp = data.stream()
-                .mapToDouble(row -> {
-                    Object temp = row.get("temperature");
-                    return temp instanceof Number ? ((Number) temp).doubleValue() : 0.0;
+            double maxTemp = filteredData.stream()
+                .mapToDouble(json -> {
+                    JSONObject dataObj = json.getJSONObject("data");
+                    if (dataObj != null && dataObj.containsKey("Temperature")) {
+                        return dataObj.getDoubleValue("Temperature");
+                    }
+                    return 0.0;
                 })
-                .max().orElse(0);
+                .filter(temp -> temp > 0.0) // 过滤掉无效数据
+                .max().orElse(0.0);
 
             if (maxTemp > 39.5) { // 正常牛体温在38.5-39.5℃
                 healthStatus = "异常";
@@ -60,16 +91,20 @@ public class HealthAnalysisServiceImpl extends ServiceImpl<AnimalHealthMapper, A
                 conclusion = new StringBuilder(String.format("检测到最高体温%.1f℃，可能存在发热迹象。", maxTemp));
             }
         } catch (Exception e) {
-            log.error("解析体温数据时出错, deviceId: {}", deviceId, e);
+            log.error("解析体温数据流时发生意外错误, devEui: {}", devEui, e);
         }
 
-        // 规则2：活动量过低检测
+        // 规则2：活动量过低检测 (动物追踪器)
         try {
-            double totalActivity = data.stream()
-                .mapToDouble(row -> {
-                    Object activity = row.get("activity");
-                    return activity instanceof Number ? ((Number) activity).doubleValue() : 0.0;
-                 })
+            double totalActivity = filteredData.stream()
+                .mapToDouble(json -> {
+                    JSONObject dataObj = json.getJSONObject("data");
+                    // 动物追踪器使用 'step' 字段作为活动量
+                    if (dataObj != null && dataObj.containsKey("step")) {
+                        return dataObj.getDoubleValue("step");
+                    }
+                    return 0.0;
+                })
                 .sum();
 
             if (totalActivity < 5000) { // 假设健康牛每日活动量阈值为5000
@@ -84,7 +119,7 @@ public class HealthAnalysisServiceImpl extends ServiceImpl<AnimalHealthMapper, A
                 }
             }
         } catch (Exception e) {
-            log.error("解析活动量数据时出错, deviceId: {}", deviceId, e);
+            log.error("解析活动量数据流时发生意外错误, devEui: {}", devEui, e);
         }
 
 
@@ -92,7 +127,7 @@ public class HealthAnalysisServiceImpl extends ServiceImpl<AnimalHealthMapper, A
             healthScore = 0;
         }
 
-        // 3. 将分析结果写回MySQL
+        // 4. 将分析结果写回MySQL
         AhAnimal updatedAnimal = new AhAnimal();
         updatedAnimal.setId(animalId);
         updatedAnimal.setHealthStatus(healthStatus);
@@ -102,7 +137,7 @@ public class HealthAnalysisServiceImpl extends ServiceImpl<AnimalHealthMapper, A
         // 使用MyBatis-Plus提供的 updateById 方法，它会自动处理非空字段的更新
         boolean success = this.updateById(updatedAnimal);
         if(success) {
-            log.info("牲畜 {} 分析完成, 结果: {}", animalId, conclusion.toString());
+            log.info("牲畜 {} (设备EUI: {}) 分析完成, 结果: {}", animalId, devEui, conclusion.toString());
         } else {
             log.error("更新牲畜 {} 的健康分析结果失败。", animalId);
         }

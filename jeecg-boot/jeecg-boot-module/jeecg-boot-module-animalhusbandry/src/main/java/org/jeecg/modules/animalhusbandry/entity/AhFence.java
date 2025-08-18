@@ -2,8 +2,10 @@ package org.jeecg.modules.animalhusbandry.entity;
 
 import java.io.Serializable;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -38,6 +40,7 @@ public class AhFence implements Serializable {
 	/**围栏顶点坐标（GeoJSON Polygon 格式）*/
 	@Excel(name = "围栏顶点坐标", width = 15)
     @Schema(description = "围栏顶点坐标（GeoJSON Polygon 格式）")
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private java.lang.String points;
 	/**状态 (1-启用, 0-禁用)*/
 	@Excel(name = "状态", width = 15, dicCode = "fence_status")

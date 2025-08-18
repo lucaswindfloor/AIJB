@@ -14,8 +14,7 @@ public interface IHealthAnalysisService extends IService<AhAnimal> {
     /**
      * 对单个牲畜进行健康分析
      * @param animalId 牲畜ID
-     * @param deviceId 绑定的设备ID
+     * @param devEui 绑定的设备EUI
      */
-    void analyzeAnimalHealth(String animalId, String deviceId);
-
+    void analyzeAnimalHealth(String animalId, String devEui);
 }

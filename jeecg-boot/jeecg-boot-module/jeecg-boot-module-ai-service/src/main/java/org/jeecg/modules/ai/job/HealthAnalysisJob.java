@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.modules.ai.entity.AhAnimalDeviceLink;
+import org.jeecg.modules.ai.entity.AiDevice;
+import org.jeecg.modules.ai.mapper.AiDeviceMapper;
 import org.jeecg.modules.ai.mapper.AnimalDeviceLinkMapper;
 import org.jeecg.modules.ai.service.IHealthAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class HealthAnalysisJob {
 
     @Autowired
     private AnimalDeviceLinkMapper animalDeviceLinkMapper;
+
+    @Autowired
+    private AiDeviceMapper aiDeviceMapper;
 
     /**
      * AI健康分析任务
@@ -55,7 +60,15 @@ public class HealthAnalysisJob {
             try {
                 // 确保animalId和deviceId都存在
                 if (StringUtils.hasText(link.getAnimalId()) && StringUtils.hasText(link.getDeviceId())) {
-                    healthAnalysisService.analyzeAnimalHealth(link.getAnimalId(), link.getDeviceId());
+                    // 关键修正：使用 link.getDeviceId() (设备主键) 查询 ah_device 表，获取 dev_eui
+                    AiDevice device = aiDeviceMapper.selectById(link.getDeviceId());
+                    if (device != null && StringUtils.hasText(device.getDevEui())) {
+                        String devEui = device.getDevEui();
+                        // 将正确的 dev_eui 传递给分析服务
+                        healthAnalysisService.analyzeAnimalHealth(link.getAnimalId(), devEui);
+                    } else {
+                        log.warn("根据设备ID: {} 未在ah_device表中找到对应的设备或dev_eui，跳过分析。", link.getDeviceId());
+                    }
                 } else {
                     log.warn("发现无效的绑定记录，ID: {}，将跳过分析。", link.getId());
                 }
