@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>jeecg-boot-module</artifactId>
+        <groupId>org.jeecgframework.boot</groupId>
+        <version>3.8.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>jeecg-boot-module-ai-service</artifactId>
+    <description>AI健康分析微服务-业务逻辑模块</description>
+
+    <dependencies>
+        <!-- 核心框架依赖 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-base-core</artifactId>
+        </dependency>
+        <!-- 动态数据源依赖，用于切换TDengine -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>dynamic-datasource-spring-boot-starter</artifactId>
+            <version>${dynamic-datasource-spring-boot-starter.version}</version>
+        </dependency>
+        <!-- XXL-Job核心依赖，用于定时任务 -->
+        <dependency>
+            <groupId>com.xuxueli</groupId>
+            <artifactId>xxl-job-core</artifactId>
+            <version>${xxl-job-core.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -1,0 +1,32 @@
+server:
+  port: 7003
+
+spring:
+  application:
+    name: jeecg-animalhusbandry
+  cloud:
+    nacos:
+      config:
+        server-addr: @config.server-addr@
+        group: @config.group@
+        namespace: @config.namespace@
+        username: @config.username@
+        password: @config.password@
+        # V3.8.0 新增配置，解决nacos引入log4j2导致冲突的问题
+        extension-configs:
+          - data-id: log-conf-@profile.name@.xml
+            group: @config.group@
+            refresh: true
+      discovery:
+        server-addr: ${spring.cloud.nacos.config.server-addr}
+        group: @config.group@
+        namespace: @config.namespace@
+        username: @config.username@
+        password: @config.password@
+  config:
+    import:
+      - optional:nacos:jeecg.yaml
+      - optional:nacos:jeecg-@profile.name@.yaml
+# 单独设置mybatis-plus的扫描路径，否则mp的sql注入拦截器不生效
+mybatis-plus:
+  mapper-locations: classpath*:/org/jeecg/modules/**/mapper/xml/*Mapper.xml

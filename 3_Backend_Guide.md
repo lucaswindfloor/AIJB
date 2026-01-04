@@ -1,0 +1,292 @@
+# JeecgBoot项目后端指南
+
+**本文档是后端开发的“操作手册”，全面覆盖了后端的技术栈、工程化、核心概念和开发最佳实践。**
+
+## 1. 后端技术栈（精确版本和深度分析）
+
+**核心框架栈：**
+- **Spring Boot 2.7.18**：核心启动框架，支持自动配置
+- **Spring Cloud Alibaba 2021.0.6.2**：微服务框架（可选）
+- **MyBatis-Plus 3.5.3.2**：增强的持久化框架，支持代码生成
+- **Apache Shiro 1.13.0**：权限控制框架
+- **Druid 1.2.24**：数据库连接池和监控
+
+**数据库支持（企业级数据库生态）：**
+- **主流数据库**：MySQL 8.0.33、PostgreSQL、SQL Server、Oracle
+- **国产数据库**：达梦(Dm8)、人大金仓(KingBase8)
+- **动态数据源**：Baomidou Dynamic-Datasource 4.3.1
+
+**安全与监控：**
+- **JWT 4.5.0**：Token认证
+- **Shiro-Redis**：分布式Session管理
+- **Micrometer + Prometheus**：指标监控
+- **Spring Boot Actuator**：健康检查
+
+**任务调度与消息：**
+- **Quartz**：定时任务调度
+- **Spring Boot Mail**：邮件发送
+- **WebSocket**：实时消息推送
+
+**容器与服务器：**
+- **Undertow**：高性能Web服务器（替代Tomcat）
+- **FreeMarker**：模板引擎（代码生成）
+
+## 2. 目录结构和分层架构
+
+**Maven多模块架构：**
+```
+jeecg-boot-parent/
+├── jeecg-boot-base-core/           # 框架核心模块
+│   ├── org.jeecg.common/           # 公共组件
+│   │   ├── api/                    # 通用API和响应格式
+│   │   ├── aspect/                 # AOP切面（权限、日志、字典）
+│   │   ├── config/                 # 自动配置类
+│   │   ├── exception/              # 全局异常处理
+│   │   └── util/                   # 工具类库
+│   └── resources/                  # 配置文件和模板
+├── jeecg-module-system/            # 系统核心模块
+│   ├── jeecg-system-api/           # 系统API接口定义
+│   ├── jeecg-system-biz/           # 系统业务逻辑实现
+│   │   ├── controller/             # 控制层
+│   │   ├── service/                # 服务层接口
+│   │   ├── service.impl/           # 服务层实现
+│   │   ├── mapper/                 # 数据访问层
+│   │   ├── entity/                 # 实体类
+│   │   └── vo/                     # 视图对象
+│   └── jeecg-system-start/         # 系统启动模块
+├── jeecg-boot-module/              # 业务模块容器
+│   └── jeecg-boot-module-parking/  # 停车模块示例
+└── jeecg-server-cloud/             # 微服务启动器
+```
+
+**分层架构设计：**
+- **Controller层**：RESTful API接口，参数验证，权限控制
+- **Service层**：业务逻辑处理，事务管理，缓存控制
+- **Mapper层**：数据访问抽象，SQL映射
+- **Entity层**：数据库实体映射，JPA注解
+
+## 3. 核心机制（深度分析）
+
+#### 3.1 Maven模块管理
+**模块依赖机制：**
+```xml
+<!-- 父POM统一版本管理 -->
+<parent>
+    <groupId>org.jeecgframework.boot</groupId>
+    <artifactId>jeecg-boot-parent</artifactId>
+    <version>3.8.0</version>
+</parent>
+
+<!-- 模块自动发现机制 -->
+<modules>
+    <module>jeecg-module-system</module>
+    <module>jeecg-boot-module</module>
+</modules>
+```
+
+**核心特性：**
+- 统一版本管理：父POM控制所有依赖版本
+- 模块热插拔：业务模块可独立开发和部署
+- 依赖传递优化：避免版本冲突
+
+#### 3.2 Spring Boot自动配置
+**JeecgBaseConfig配置体系：**
+```java
+@Component("jeecgBaseConfig")
+@ConfigurationProperties(prefix = "jeecg")
+public class JeecgBaseConfig {
+    private String signatureSecret;      // 签名密钥
+    private String uploadType;           // 上传模式
+    private Firewall firewall;           // 安全配置
+    private Shiro shiro;                 // 权限配置
+    private DomainUrl domainUrl;         // 前端域名
+}
+```
+
+**自动配置特性：**
+- 配置热加载：支持动态配置更新
+- 多环境支持：dev/test/prod环境切换
+- 条件装配：根据配置决定组件加载
+
+#### 3.3 数据库映射规范
+**MyBatis-Plus增强机制：**
+```java
+@Configuration
+@MapperScan(value={"org.jeecg.**.mapper*"})
+public class MybatisPlusSaasConfig {
+    // 多租户拦截器
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new TenantLineInnerInterceptor());
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        return interceptor;
+    }
+}
+```
+
+**映射规范特性：**
+- 自动租户隔离：SQL自动注入tenant_id条件
+- 分页插件：自动分页查询优化
+- 乐观锁支持：@Version注解支持
+- 动态表名：支持表名动态切换
+
+#### 3.4 权限控制机制
+**多层权限体系：**
+```java
+@Aspect
+@Component
+public class PermissionDataAspect {
+    @Around("pointCut()")
+    public Object arround(ProceedingJoinPoint point) {
+        // 1. 解析@PermissionData注解
+        // 2. 查询用户数据权限规则
+        // 3. 注入SQL查询条件
+        // 4. 缓存权限信息
+    }
+}
+```
+
+**权限控制特性：**
+- 菜单权限：基于Shiro的URL拦截
+- 按钮权限：@RequiresPermissions注解控制
+- 数据权限：@PermissionData切面注入SQL条件
+- 字段权限：敏感字段脱敏显示
+
+#### 3.5 异常处理机制
+**全局异常处理体系：**
+```java
+@RestControllerAdvice
+public class JeecgBootExceptionHandler {
+    @ExceptionHandler(JeecgBootException.class)
+    public Result<?> handleJeecgBootException() {}
+    
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public Result<?> handleHttpRequestMethodNotSupportedException() {}
+}
+```
+
+## 4. 数据层设计
+
+#### 4.1 实体关系映射
+**核心实体设计：**
+- **SysUser**：用户实体，支持多租户、多部门
+- **SysRole**：角色实体，支持数据权限规则
+- **SysPermission**：权限实体，树形结构管理
+- **SysDepart**：部门实体，树形组织架构
+
+**映射特性：**
+- 注解驱动：@TableName、@TableId、@TableField完整映射
+- 软删除支持：@TableLogic逻辑删除
+- 自动填充：@TableField(fill = FieldFill.INSERT)
+- 版本控制：@Version乐观锁
+
+#### 4.2 数据访问层设计
+**Mapper接口规范：**
+```java
+@Mapper
+public interface SysUserMapper extends BaseMapper<SysUser> {
+    // 继承BaseMapper获得基础CRUD
+    // 自定义复杂查询方法
+    List<SysUser> queryByDepId(@Param("depId") String depId);
+}
+```
+
+**XML映射特性：**
+- 动态SQL：MyBatis-Plus条件构造器
+- 分页优化：PageHelper自动分页
+- 结果映射：复杂对象自动映射
+- SQL监控：Druid SQL性能监控
+
+#### 4.3 多租户数据隔离
+**租户表配置：**
+```java
+public static final List<String> TENANT_TABLE = Arrays.asList(
+    "sys_depart", "sys_category", "sys_data_source",
+    "onl_drag_page", "jimu_report", "airag_app"
+);
+```
+
+**隔离机制特性：**
+- 自动注入：SQL自动添加tenant_id条件
+- 表级控制：可配置哪些表需要租户隔离
+- 上下文传递：线程级租户ID传递
+- 兼容性：支持单租户和多租户混合部署
+
+## 5. 服务层和控制层设计
+
+#### 5.1 服务层架构
+**接口与实现分离：**
+```java
+// 服务接口
+public interface ISysUserService extends IService<SysUser> {
+    Result<?> queryUserByToken(String token);
+    void addUserWithRole(SysUser user, String roles);
+}
+
+// 服务实现
+@Service
+public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> 
+    implements ISysUserService {
+    // 业务逻辑实现
+}
+```
+
+**服务层特性：**
+- 事务管理：@Transactional声明式事务
+- 缓存支持：@Cacheable Redis缓存
+- 异步处理：@Async异步方法支持
+- 参数验证：@Valid Bean验证
+
+#### 5.2 控制层架构
+**RESTful API设计：**
+```java
+@RestController
+@RequestMapping("/sys/user")
+@Api(tags="用户管理")
+public class SysUserController {
+    
+    @GetMapping("/list")
+    @RequiresPermissions("user:list")
+    @PermissionData(pageComponent="system/UserList")
+    public Result<?> queryPageList(SysUser sysUser, 
+                                  @RequestParam Integer pageNo,
+                                  @RequestParam Integer pageSize) {
+        // 控制器逻辑
+    }
+}
+```
+
+**控制层特性：**
+- 统一响应：Result<T>封装响应格式
+- 参数验证：@Valid + BindingResult验证
+- 权限控制：Shiro注解 + 自定义权限注解
+- API文档：Swagger3自动生成文档
+- 异常处理：全局异常拦截器
+
+## 6. 后端开发最佳实践
+
+### 6.1. 案例：日志与POJO类注解的规范与异常处理
+
+在开发过程中，遵循统一的注解规范至关重要。以下是关于日志和实体/VO/DTO类（统称POJO）注解的最佳实践和问题处理预案。
+
+**1. 日志记录规范**
+*   **统一标准**: 全项目统一使用 Lombok 的 `@Slf4j` 注解进行日志记录。这是最简洁且规范的做法。
+*   **禁止手动创建**: 除非有极其特殊的原因，否则应避免通过 `LoggerFactory.getLogger()` 的方式手动创建 `Logger` 实例。
+
+**2. POJO类注解规范**
+*   **统一标准**: 所有的 `Entity`, `VO`, `DTO` 类都应统一使用 Lombok 的 `@Data` 注解来自动生成`getter`, `setter`, `toString`等样板代码。这能保持代码的整洁和一致性。
+
+**3. "StringConcatFactory" 编译错误处理预案**
+*   **问题现象**: 在添加 `@Slf4j` 或 `@Data` 注解后，编译时可能会遇到 `java: 找不到符号 符号: 类 StringConcatFactory` 的错误。
+*   **问题定性**: 这个错误**不是**注解本身与JDK不兼容导致的。它通常指向了更深层次的构建环境问题，例如：
+    *   IDE (如IntelliJ IDEA) 的构建缓存或编译器设置与项目的 `pom.xml` 配置不一致。
+    *   `pom.xml` 中 `lombok` 依赖的版本、作用域(scope)或`maven-compiler-plugin`的配置存在问题。
+*   **处理流程**:
+    1.  **首先检查构建环境**: 尝试使用Maven命令行工具（如 `mvn clean compile`）进行编译，以排除IDE特定缓存或设置的干扰。
+    2.  **绝不轻易放弃标准**: **不要**因为这个错误就轻易放弃使用 `@Slf4j` 和 `@Data` 的项目标准。手动实现`logger`或`getter/setter`应作为最后的、万不得已的临时手段。
+    3.  **临时解决方案 (高优先级保证编译通过)**: 如果在紧急情况下无法快速定位构建环境问题，为了保证核心功能开发不被阻塞，可以采取以下临时措施：
+        *   对于Service/Controller层，移除`@Slf4j`，手动创建`Logger`实例。
+        *   对于POJO类，移除`@Data`，手动创建`getter/setter`方法。
+    4.  **根本解决 (低优先级但必须解决)**: 在完成紧急开发任务后，必须回过头来，与项目负责人或架构师一起，彻底排查 `pom.xml` 配置和IDE环境，从根本上解决构建问题，然后将所有临时修改的代码恢复成使用`@Slf4j`和`@Data`的标准形式。

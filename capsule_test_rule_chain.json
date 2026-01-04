@@ -1,0 +1,109 @@
+{
+  "ruleChain": {
+    "name": "胶囊-BC100-测试规则链-v1",
+    "type": "CORE",
+    "firstRuleNodeId": null,
+    "root": false,
+    "debugMode": true,
+    "configuration": null,
+    "additionalInfo": {
+      "description": "胶囊BC-100设备数据处理测试规则链，用于调试数据解析"
+    }
+  },
+  "metadata": {
+    "version": 7,
+    "firstNodeIndex": 0,
+    "nodes": [
+      {
+        "type": "org.thingsboard.rule.engine.action.TbLogNode",
+        "name": "记录原始消息",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "TBEL",
+          "jsScript": "return 'Raw Message: ' + JSON.stringify(msg) + '\\nMetadata: ' + JSON.stringify(metadata);",
+          "tbelScript": "return 'Raw Message: ' + JSON.stringify(msg) + '\\nMetadata: ' + JSON.stringify(metadata);"
+        },
+        "additionalInfo": {
+          "description": "记录接收到的原始消息",
+          "layoutX": 100,
+          "layoutY": 100
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "胶囊数据解析器",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "// 胶囊数据解析器 - 测试版本\nfunction easy_decode(bytes) {\n    var decoded = {};\n    \n    if (bytes[0] >= 0xC1 && bytes[0] <= 0xC6) {\n        let uint = (1 << ((bytes[0] & 0x0F) - 1)) / 127.0;\n        if(bytes[0] == 0xC5) {\n            uint = 20 / 127;\n        } else if(bytes[0] == 0xC6) {\n            uint = 40 / 127;\n        }\n        \n        var sensorStatus = bytes[1];\n        decoded.sensorStatusRaw = sensorStatus;\n        \n        // 解析传感器状态\n        if ((sensorStatus >> 7) & 0x01) {\n            decoded.sensorStatus = \"Reboot\";\n        } else if ((sensorStatus >> 4) & 0x01) {\n            decoded.sensorStatus = \"ACC XYZ Same\";\n        } else if ((sensorStatus >> 3) & 0x01) {\n            decoded.sensorStatus = \"ACC Init Fail\";\n        } else if ((sensorStatus >> 2) & 0x01) {\n            decoded.sensorStatus = \"Temperature unusual\";\n        } else if ((sensorStatus >> 1) & 0x01) {\n            decoded.sensorStatus = \"CRC ERROR\";\n        } else if (sensorStatus & 0x01) {\n            decoded.sensorStatus = \"NO ACK\";\n        } else {\n            decoded.sensorStatus = \"Normal\";\n        }\n        \n        // 解析温度数据\n        var tempValue = (bytes[2] << 4) | (bytes[3] >> 4);\n        var temperature = (tempValue * 3100.0 / 2048.0 + 4000) / 100.0 - 0.4 + 0.005;\n        decoded.Temperature = parseFloat(temperature.toFixed(2));\n        \n        // 解析胃动力数据\n        decoded.Gastric_momentum = (bytes[10] << 24) | (bytes[11] << 16) | (bytes[12] << 8) | bytes[13];\n    }\n    \n    return decoded;\n}\n\n// 十六进制字符串转字节数组\nfunction hexToBytes(hex) {\n    hex = hex.replace(/[^0-9A-Fa-f]/g, '');\n    var bytes = [];\n    for (var i = 0; i < hex.length; i += 2) {\n        bytes.push(parseInt(hex.substr(i, 2), 16));\n    }\n    return bytes;\n}\n\n// 处理消息数据\nvar result = {};\nif (msg.data) {\n    var bytes = [];\n    \n    // 检查数据格式\n    if (typeof msg.data === 'string' && /^[0-9A-Fa-f\\s]+$/.test(msg.data)) {\n        // 十六进制格式\n        bytes = hexToBytes(msg.data);\n        result = easy_decode(bytes);\n        result.dataFormat = 'HEX';\n    } else {\n        result.error = 'Unsupported data format';\n        result.dataFormat = 'Unknown';\n    }\n    \n    result.originalData = msg.data;\n    result.bytesArray = bytes;\n    result.bytesHex = bytes.map(b => b.toString(16).padStart(2, '0')).join(' ').toUpperCase();\n}\n\nmsg.result = result;\nreturn {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "解析胶囊设备上报的十六进制数据",
+          "layoutX": 300,
+          "layoutY": 100
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.action.TbLogNode",
+        "name": "记录解析结果",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "TBEL",
+          "jsScript": "return 'Parsed Result: ' + JSON.stringify(msg.result);",
+          "tbelScript": "return 'Parsed Result: ' + JSON.stringify(msg.result);"
+        },
+        "additionalInfo": {
+          "description": "记录数据解析结果",
+          "layoutX": 500,
+          "layoutY": 100
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode",
+        "name": "保存遥测数据",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "defaultTTL": 0,
+          "skipLatestPersistence": null,
+          "useServerTs": true
+        },
+        "additionalInfo": {
+          "description": "保存解析后的遥测数据",
+          "layoutX": 500,
+          "layoutY": 200
+        }
+      }
+    ],
+    "connections": [
+      {
+        "fromIndex": 0,
+        "toIndex": 1,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 1,
+        "toIndex": 2,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 1,
+        "toIndex": 3,
+        "type": "Success"
+      }
+    ],
+    "ruleChainConnections": null
+  }
+} 

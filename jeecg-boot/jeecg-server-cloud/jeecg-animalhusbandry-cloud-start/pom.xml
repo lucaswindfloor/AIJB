@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>jeecg-server-cloud</artifactId>
+        <groupId>org.jeecgframework.boot</groupId>
+        <version>3.8.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>jeecg-animalhusbandry-cloud-start</artifactId>
+
+    <dependencies>
+        <!-- 核心依赖：引入JeecgBoot的微服务启动依赖 starter，它包含了nacos/openfeign/shiro等所有基础依赖和自动配置 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-starter-cloud</artifactId>
+        </dependency>
+
+        <!-- 核心业务依赖：引入智能畜牧的全部业务逻辑和TDengine配置 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-module-animalhusbandry</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- system cloud api：用于潜在的跨服务调用 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-system-cloud-api</artifactId>
+        </dependency>
+
+        <!-- job starter：如果业务模块需要定时任务，则保留 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-starter-job</artifactId>
+        </dependency>
+        
+        <!-- 关键补充：为我们的业务模块明确提供TDengine的JDBC驱动 -->
+        <dependency>
+            <groupId>com.taosdata.jdbc</groupId>
+            <artifactId>taos-jdbcdriver</artifactId>
+            <version>3.2.7</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

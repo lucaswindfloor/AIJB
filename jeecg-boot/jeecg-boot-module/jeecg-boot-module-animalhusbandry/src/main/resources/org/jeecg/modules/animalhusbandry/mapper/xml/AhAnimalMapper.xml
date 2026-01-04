@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.jeecg.modules.animalhusbandry.mapper.AhAnimalMapper">
+
+    <!-- 按健康状态分组统计牲畜数量 -->
+    <select id="countByHealthStatus" resultType="java.util.Map">
+        SELECT
+            health_status,
+            COUNT(*) as count
+        FROM
+            ah_animal
+        GROUP BY
+            health_status
+    </select>
+
+    <select id="queryBoundDevicesByAnimalIds" resultType="org.jeecg.modules.animalhusbandry.vo.AhDeviceVo">
+        SELECT
+            l.animal_id as animalId,
+            d.id,
+            d.name,
+            d.device_type as deviceType
+        FROM
+            ah_animal_device_link l
+        JOIN
+            ah_device d ON l.device_id = d.id
+        WHERE
+            l.is_active = 1
+        AND
+            l.animal_id IN
+        <foreach item="item" index="index" collection="animalIds" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper> 

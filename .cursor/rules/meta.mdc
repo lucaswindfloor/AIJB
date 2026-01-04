@@ -1,0 +1,47 @@
+---
+alwaysApply: false
+---
+---
+# 这是一条元规则（meta-rule），用于根据用户问题的领域动态加载和应用更具体的规则。
+# Its purpose is to act as a dispatcher, not to enforce constraints itself.
+name: domain_dispatcher
+type: global
+---
+
+<rule>
+当用户提出任何技术或编码相关问题时，严格遵循以下判断和执行流程：
+
+**第一步：问题领域分析**
+
+1.  **提取用户问题的核心词汇和意图**。分析问题中是否包含以下领域的特定关键词。
+
+**第二步：规则动态加载**
+
+2.  **根据关键词匹配，动态加载相应的规则文件**。匹配规则如下（按优先级排序）：
+
+*   **前端领域 (Frontend):**
+    *   **关键词**: `前端`, `Vue`, `Vite`, `TypeScript`, `组件(Component)`, `页面(View)`, `样式(CSS/Less)`, `布局(Layout)`, `路由(Router)`, `Ant Design`, `Pinia`
+    *   **执行**: 如果匹配，**必须**优先读取并应用 `2-frontend-guide.mdc` 中的所有规则。
+
+*   **后端领域 (Backend):**
+    *   **关键词**: `后端`, `Spring Boot`, `MyBatis`, `Controller`, `Service`, `Mapper`, `数据库(Database)`, `API`, `微服务(Microservice)`, `Nacos`, `网关(Gateway)`, `JWT`, `Shiro`
+    *   **执行**: 如果匹配，**必须**优先读取并应用 `3-backend-guide.mdc` 中的所有规则。
+
+*   **部署与运维领域 (Deployment/Infra):**
+    *   **关键词**: `部署(Deploy)`, `运维`, `Docker`, `Nginx`, `构建(Build)`, `打包(Package)`, `服务器(Server)`, `配置(Configuration)`, `环境(Environment)`
+    *   **执行**: 如果匹配，**必须**优先读取并应用 `4-deployment-guide.mdc` 中的所有规则。
+
+*   **架构与全局领域 (Architecture):**
+    *   **关键词**: `架构(Architecture)`, `设计`, `模块划分`, `依赖关系`, `数据流`, `原则`, `规范`, `通信`
+    *   **执行**: 如果匹配，**必须**优先读取并应用 `1-architecture-guide.mdc` 中的所有规则。
+
+**第三步：规则应用与回退机制**
+
+3.  **规则合并**: 将匹配到的规则文件内容，在当前对话的上下文中置于最高优先级。
+
+4.  **组合匹配**: 如果一个问题同时涉及多个领域（例如“前端如何调用后端微服务API”），则应**同时加载**所有相关领域的规则文件（此例中为 `2-frontend-guide.mdc`、`3-backend-guide.mdc` 和 `1-architecture-guide.mdc`）。
+
+5.  **默认回退**: 如果问题无法明确归类到以上任何一个特定领域，或者是一个非常宽泛的问题，**必须默认加载并应用 `1-architecture-guide.mdc`**，因为它包含了项目的顶层设计和通用原则。
+
+此流程仅在当前对话的单次交互中生效，旨在为AI提供最相关的上下文，不应污染全局或持久化设置。
+</rule>

@@ -1,0 +1,476 @@
+{
+  "ruleChain": {
+    "name": "瘤胃胶囊-规则链-v1",
+    "type": "CORE",
+    "firstRuleNodeId": null,
+    "root": false,
+    "debugMode": true,
+    "configuration": null,
+    "additionalInfo": {
+      "description": "用于解析瘤胃胶囊（Rumen Bolus）设备数据的规则链"
+    }
+  },
+  "metadata": {
+    "version": 2,
+    "firstNodeIndex": 5,
+    "nodes": [
+      {
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode",
+        "name": "Save Timeseries",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "defaultTTL": 0,
+          "skipLatestPersistence": null,
+          "useServerTs": true
+        },
+        "additionalInfo": {
+          "description": null,
+          "layoutX": 1039,
+          "layoutY": 387
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.telemetry.TbMsgAttributesNode",
+        "name": "Save Client Attributes",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 2,
+        "configuration": {
+          "scope": "CLIENT_SCOPE",
+          "notifyDevice": false,
+          "sendAttributesUpdatedNotification": false,
+          "updateAttributesOnlyOnValueChange": true
+        },
+        "additionalInfo": {
+          "description": null,
+          "layoutX": 258,
+          "layoutY": 66
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.filter.TbMsgTypeSwitchNode",
+        "name": "Message Type Switch",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "version": 0
+        },
+        "additionalInfo": {
+          "description": null,
+          "layoutX": 116,
+          "layoutY": 396
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.action.TbLogNode",
+        "name": "Log RPC from Device",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "TBEL",
+          "jsScript": "return '\\nIncoming message:\\n' + JSON.stringify(msg) + '\\nIncoming metadata:\\n' + JSON.stringify(metadata);",
+          "tbelScript": "return '\\nIncoming message:\\n' + JSON.stringify(msg) + '\\nIncoming metadata:\\n' + JSON.stringify(metadata);"
+        },
+        "additionalInfo": {
+          "layoutX": 309,
+          "layoutY": 732
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.action.TbLogNode",
+        "name": "Log Other",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "TBEL",
+          "jsScript": "return '\\nIncoming message:\\n' + JSON.stringify(msg) + '\\nIncoming metadata:\\n' + JSON.stringify(metadata);",
+          "tbelScript": "return '\\nIncoming message:\\n' + JSON.stringify(msg) + '\\nIncoming metadata:\\n' + JSON.stringify(metadata);"
+        },
+        "additionalInfo": {
+          "layoutX": 73,
+          "layoutY": 734
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.profile.TbDeviceProfileNode",
+        "name": "Device Profile Node",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 1,
+        "configuration": {
+          "persistAlarmRulesState": false,
+          "fetchAlarmRulesStateOnStart": false
+        },
+        "additionalInfo": {
+          "description": "Process incoming messages from devices with the alarm rules defined in the device profile. Dispatch all incoming messages with \"Success\" relation type.",
+          "layoutX": 54,
+          "layoutY": 294
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "解码器",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "/**\r\n * Payload Decoder for Rumen Bolus\r\n * \r\n * Copyright 2024 HKT SmartHard\r\n * \r\n * @product BC-100\r\n */\r\n\r\nfunction easy_decode(bytes) {\r\n    var decoded = {};\r\n\r\n    if (bytes[0] == 0xF2) {\r\n        decoded.Temperature = readInt16LE(bytes.slice(1, 3)) / 100;\r\n        decoded.Gastric_momentum = readUInt32LE(bytes.slice(3, 7));\r\n        decoded.acc_x = readInt8LE(bytes[7]);\r\n        decoded.acc_y = readInt8LE(bytes[8]);\r\n        decoded.acc_z = readInt8LE(bytes[9]);\r\n        decoded.Bat = readUInt8LE(bytes[10]);\r\n    }\r\n    else if (bytes[0] >= 0xC1 && bytes[0] <= 0xC6) {\r\n        let uint = (1 << ((bytes[0] & 0x0F) - 1) )/ 127.0;\r\n        if(bytes[0] == 0xC5){\r\n            uint = 20 / 127;\r\n        }\r\n        else if(bytes[0] == 0xC6){\r\n            uint = 40 / 127;\r\n        }\r\n        var sensorStatus = bytes[1];\r\n\r\n        if ((sensorStatus >> 7) & 0x01) {\r\n            decoded.sensorStatus = \"Reboot\";\r\n        }\r\n        if ((sensorStatus >> 4) & 0x01) {\r\n            decoded.sensorStatus = \"ACC XYZ Same\";\r\n        }\r\n        if ((sensorStatus >> 3) & 0x01) {\r\n            decoded.sensorStatus = \"ACC Init Fail\";\r\n        }\r\n        if ((sensorStatus >> 2) & 0x01) {\r\n            decoded.sensorStatus = \"Temperature unusual\";\r\n        }\r\n        if ((sensorStatus >> 1) & 0x01) {\r\n            decoded.sensorStatus = \"CRC ERROR\";\r\n        }\r\n        if ((sensorStatus) & 0x01) {\r\n            decoded.sensorStatus = \"NO ACK\";\r\n        }\r\n\r\n        var value = readInt12LE(bytes.slice(2, 4));\r\n        let temperature = (value * 3100.0 / 2048.0 + 4000) / 100.0 - 0.4 + 0.005;\r\n        decoded.Temperature = parseFloat(temperature.toFixed(2));\r\n\r\n        value =  readInt8LE(bytes[4]) * uint + decoded.Temperature;\r\n        decoded.Temperature_1 = parseFloat(value.toFixed(2));\r\n\r\n        value = readInt8LE(bytes[5]) * uint + decoded.Temperature_1;\r\n        decoded.Temperature_2 = parseFloat(value.toFixed(2));\r\n\r\n        value = readInt8LE(bytes[6]) * uint + decoded.Temperature_2;\r\n        decoded.Temperature_3 = parseFloat(value.toFixed(2));\r\n\r\n        value = readInt8LE(bytes[7]) * uint + decoded.Temperature_3;\r\n        decoded.Temperature_4 = parseFloat(value.toFixed(2));\r\n\r\n        value = readInt8LE(bytes[8]) * uint + decoded.Temperature_4;\r\n        decoded.Temperature_5 = parseFloat(value.toFixed(2));\r\n\r\n        value = readInt8LE(bytes[9]) * uint + decoded.Temperature_5;\r\n        decoded.Temperature_6 = parseFloat(value.toFixed(2));\r\n\r\n        decoded.Gastric_momentum = readUInt32LE(bytes.slice(10, 14));\r\n    }\r\n    return decoded;\r\n}\r\n\r\n/* ******************************************\r\n * bytes to number\r\n ********************************************/\r\nfunction readUInt8LE(byte) {\r\n    return (byte & 0xFF);\r\n}\r\n\r\nfunction readInt8LE(byte) {\r\n    var ref = readUInt8LE(byte);\r\n    return (ref > 0x7F) ? ref - 0x100 : ref;\r\n}\r\n\r\nfunction readUInt16LE(byte) {\r\n    var value = (byte[0] << 8) + byte[1];\r\n    return (value & 0xFFFF);\r\n}\r\n\r\nfunction readInt16LE(byte) {\r\n    var ref = readUInt16LE(byte);\r\n    return (ref > 0x7FFF) ? ref - 0x10000 : ref;\r\n}\r\n\r\nfunction readInt12LE(byte) {\r\n    var ref = readUInt16LE(byte) & 0xFFF;\r\n    return (ref > 0x7FF) ? ref - 0x1000 : ref;\r\n}\r\n\r\nfunction readUInt32LE(byte) {\r\n    var value = (byte[0] << 24) + (byte[1] << 16) + (byte[2] << 8) + byte[3];\r\n    return (value & 0xFFFFFFFF);\r\n}\r\n\r\nfunction hexToBytes(hex) {\r\n    if (!/^[0-9a-fA-F]+$/.test(hex)) {\r\n        throw new Error(\"Invalid input: hex string must contain only hexadecimal characters (0-9, a-f, A-F).\");\r\n    }\r\n    if (hex.length % 2 !== 0) {\r\n        throw new Error(\"Invalid input: hex string length must be even.\");\r\n    }\r\n    var bytes = [];\r\n    for (var i = 0; i < hex.length; i += 2) {\r\n        var byte = parseInt(hex.slice(i, i + 2), 16);\r\n        bytes.push(byte);\r\n    }\r\n    return bytes;\r\n}\r\n\r\n// Main ThingsBoard script\r\nif (msg.dataHex) {\r\n    try {\r\n        var bytes = hexToBytes(msg.dataHex);\r\n        msg.result = easy_decode(bytes);\r\n    } catch (e) {\r\n        msg.error = e.toString();\r\n    }\r\n}\r\n\r\nreturn {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 512,
+          "layoutY": 289
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "构建OC请求参数",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "function toObj(obj) {\n    if (!(obj instanceof Object)) {\n        obj = JSON.parse(obj);\n    }\n    return obj;\n}\n\nvar request = {\n    \"type\": \"HEX\",\n    \"fport\": 10,\n    \"confirmed\": false,\n    \"payload\": msg.cmd\n};\n\nmsg.params = request;\n\nreturn {\n    msg: msg,\n    metadata: metadata,\n    msgType: msgType\n};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 513,
+          "layoutY": 576
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.flow.TbRuleChainInputNode",
+        "name": "网关",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 1,
+        "configuration": {
+          "forwardMsgToDefaultRuleChain": false,
+          "ruleChainId": "4b7bc460-e907-11ef-a8ee-99a8c68f9649"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 515,
+          "layoutY": 662
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "Base64ToHex",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "function base64decode(e) {\n    var r, a, c, h, o, t, d, base64DecodeChars = new Array((- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), 62, (- 1), (- 1), (- 1), 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, (- 1), (- 1), (- 1), (- 1), (- 1), (- 1), 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, (- 1), (- 1), (- 1), (- 1), (- 1));;\n    for (t = e.length, o = 0, d = ''; o < t;) {\n        do {\n            r = base64DecodeChars[255 & e.charCodeAt(o++)];\n        } while (o < t && r == -1);\n        if (r == -1) {\n            break;\n        }\n        do {\n            a = base64DecodeChars[255 & e.charCodeAt(o++)];\n        } while (o < t && a == -1);\n        if (a == -1) {\n            break;\n        }\n        d += String.fromCharCode(r << 2 | (48 & a) >> 4);\n        do {\n            if (c = 255 & e.charCodeAt(o++), 61 == c) {\n                return d;\n            }\n            c = base64DecodeChars[c];\n        } while (o < t && c == - 1);\n        if (c == -1) {\n            break;\n        }\n        d += String.fromCharCode((15 & a) << 4 | (60 & c) >> 2);\n        do {\n            if (h = 255 & e.charCodeAt(o++), 61 == h) {\n                return d;\n            }\n            h = base64DecodeChars[h];\n        } while (o < t && h == - 1);\n        if (h == -1) {\n            break;\n        }\n        d += String.fromCharCode((3 & c) << 6 | h)\n    }\n    return d\n}\n\nfunction base64ToHex(str) {\n    var bin = base64decode(str.replace(/[ \\r\\n]+$/, \"\"));\n    for (var i = 0, hex = []; i < bin.length; ++i) {\n        var tmp = bin.charCodeAt(i).toString(16);\n        if (tmp.length === 1) {\n            tmp = \"0\" + tmp;\n        }\n        hex[hex.length] = tmp;\n    }\n    return hex.join(\"\");\n}\n\nif (msg.data) {\n    msg.dataHex = base64ToHex(msg.data);\n}\n\nreturn {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 511,
+          "layoutY": 200
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "编码器",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "// Encode encodes the given object into an array of bytes.\r\n//  - fPort contains the LoRaWAN fPort number\r\n//  - obj is an object, e.g. {\"temperature\": 22.5}\r\n// The function must return an array of bytes, e.g. [225, 230, 255, 0]\r\nfunction Encode(fPort, obj) {\r\n  return [];\r\n}\r\n\r\nmsg.cmd = Encode(fPort, msg);\r\n\r\nreturn { msg: msg, metadata: metadata, msgType: msgType };",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 511,
+          "layoutY": 489
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "构建Kafka消息推送数据",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "msg['deviceName'] = metadata.deviceName;\nmsg['data'] = msg.result;\nmsg['ts'] = metadata.ts;\ndelete msg.timestamp;\ndelete msg.result;\nreturn {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: {deviceName: metadata.deviceName, ts: metadata.ts, data: msg.result.data, base64Data: msg.data}, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 1037,
+          "layoutY": 205
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.metadata.TbGetTenantDetailsNode",
+        "name": "添加租户id",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 1,
+        "configuration": {
+          "detailsList": [
+            "ID"
+          ],
+          "fetchTo": "METADATA"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 1034,
+          "layoutY": 115
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.kafka.TbKafkaNode",
+        "name": "消息推送",
+        "debugMode": true,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "topicPattern": "telemetry_${tenant_id}",
+          "keyPattern": null,
+          "bootstrapServers": "172.22.3.102:9092,172.22.3.102:9093",
+          "retries": 0,
+          "batchSize": 16384,
+          "linger": 0,
+          "bufferMemory": 33554432,
+          "acks": "-1",
+          "keySerializer": "org.apache.kafka.common.serialization.StringSerializer",
+          "valueSerializer": "org.apache.kafka.common.serialization.StringSerializer",
+          "otherProperties": {},
+          "addMetadataKeyValuesAsKafkaHeaders": false,
+          "kafkaHeadersCharset": "UTF-8"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 1033,
+          "layoutY": 26
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.filter.TbJsFilterNode",
+        "name": "过滤无用的数据包",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "return !!msg.result && Object.keys(msg.result).length > 0;",
+          "tbelScript": "return !!msg.result.error;"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 1039,
+          "layoutY": 292
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "转换body",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "JS",
+          "jsScript": "if (msg.body) {\n    var body = JSON.parse(msg.body.replace(/'/g, '\"').replace(/\"True\"/, \"true\"));\n    msg = Object.assign(body, msg);\n    delete msg.body;\n}\nreturn {\n    msg: msg,\n    metadata: metadata,\n    msgType: msgType\n};",
+          "tbelScript": "return {msg: msg, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 512,
+          "layoutY": 384
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.kafka.TbKafkaNode",
+        "name": "设备创建事件通知",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "topicPattern": "create_device_${tenant_id}",
+          "keyPattern": null,
+          "bootstrapServers": "172.22.3.102:9092,172.22.3.102:9093",
+          "retries": 0,
+          "batchSize": 16384,
+          "linger": 0,
+          "bufferMemory": 33554432,
+          "acks": "-1",
+          "keySerializer": "org.apache.kafka.common.serialization.StringSerializer",
+          "valueSerializer": "org.apache.kafka.common.serialization.StringSerializer",
+          "otherProperties": {},
+          "addMetadataKeyValuesAsKafkaHeaders": false,
+          "kafkaHeadersCharset": "UTF-8"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 724,
+          "layoutY": 126
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.metadata.TbGetTenantDetailsNode",
+        "name": "添加租户id",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 1,
+        "configuration": {
+          "detailsList": [
+            "ID"
+          ],
+          "fetchTo": "METADATA"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 436,
+          "layoutY": 125
+        }
+      },
+      {
+        "type": "org.thingsboard.rule.engine.transform.TbTransformMsgNode",
+        "name": "提取result作为遥测数据",
+        "debugMode": false,
+        "singletonMode": false,
+        "queueName": null,
+        "configurationVersion": 0,
+        "configuration": {
+          "scriptLang": "TBEL",
+          "jsScript": "return {msg: msg, metadata: metadata, msgType: msgType};",
+          "tbelScript": "return {msg: msg.result, metadata: metadata, msgType: msgType};"
+        },
+        "additionalInfo": {
+          "description": "",
+          "layoutX": 762,
+          "layoutY": 289
+        }
+      }
+    ],
+    "connections": [
+      {
+        "fromIndex": 0,
+        "toIndex": 14,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 1,
+        "type": "Post attributes"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 3,
+        "type": "RPC Request from Device"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 4,
+        "type": "Other"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 9,
+        "type": "Post telemetry"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 10,
+        "type": "RPC Request to Device"
+      },
+      {
+        "fromIndex": 2,
+        "toIndex": 17,
+        "type": "Entity Created"
+      },
+      {
+        "fromIndex": 5,
+        "toIndex": 2,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 6,
+        "toIndex": 15,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 7,
+        "toIndex": 8,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 9,
+        "toIndex": 6,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 10,
+        "toIndex": 7,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 11,
+        "toIndex": 12,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 12,
+        "toIndex": 13,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 14,
+        "toIndex": 11,
+        "type": "True"
+      },
+      {
+        "fromIndex": 15,
+        "toIndex": 0,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 15,
+        "toIndex": 18,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 17,
+        "toIndex": 16,
+        "type": "Success"
+      },
+      {
+        "fromIndex": 18,
+        "toIndex": 0,
+        "type": "Success"
+      }
+    ],
+    "ruleChainConnections": null
+  }
+}

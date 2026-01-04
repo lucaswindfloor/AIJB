@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.jeecg.modules.parking.mapper.ParkingOccupancyMapper">
+
+    <select id="selectListByQuery" resultType="org.jeecg.modules.parking.entity.ParkingOccupancy">
+        SELECT
+            parking_lot_id,
+            <choose>
+                <when test="query.granularity == 'day'">
+                    `hour`,
+                </when>
+                <otherwise>
+                    `date`,
+                </otherwise>
+            </choose>
+            AVG(occupancy_rate) AS occupancy_rate
+        FROM
+            parking_occupancy
+        WHERE
+            parking_lot_id IN
+            <foreach item="item" collection="query.parkingLotIds.split(',')" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            <if test="query.startDate != null and query.startDate != ''">
+                AND `date` &gt;= #{query.startDate}
+            </if>
+            <if test="query.endDate != null and query.endDate != ''">
+                AND `date` &lt;= #{query.endDate}
+            </if>
+        <choose>
+            <when test="query.granularity == 'day'">
+                GROUP BY parking_lot_id, `hour`
+                ORDER BY `hour` ASC
+            </when>
+            <otherwise>
+                GROUP BY parking_lot_id, `date`
+                ORDER BY `date` ASC
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper> 

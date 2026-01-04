@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>jeecg-server-cloud</artifactId>
+        <groupId>org.jeecgframework.boot</groupId>
+        <version>3.8.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>jeecg-ai-service-cloud-start</artifactId>
+    <description>AI健康分析微服务-启动器</description>
+
+    <dependencies>
+        <!-- 核心依赖：引入JeecgBoot的微服务启动依赖 starter -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-starter-cloud</artifactId>
+        </dependency>
+
+        <!-- 核心业务依赖：引入AI服务的全部业务逻辑 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-module-ai-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 为AI服务引入XXL-Job依赖，这是编写定时任务的必要前提 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-starter-job</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

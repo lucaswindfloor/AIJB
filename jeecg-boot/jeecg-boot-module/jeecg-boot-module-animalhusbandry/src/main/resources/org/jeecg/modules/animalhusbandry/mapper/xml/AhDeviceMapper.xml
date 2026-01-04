@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.jeecg.modules.animalhusbandry.mapper.AhDeviceMapper">
+
+    <select id="getDevicePage" resultType="org.jeecg.modules.animalhusbandry.vo.AhDevicePage">
+        SELECT
+            d.*,
+            a.id AS "boundAnimalInfo.animalId",
+            a.ear_tag_id AS "boundAnimalInfo.earTagId",
+            a.name AS "boundAnimalInfo.name"
+        FROM
+            ah_device d
+                LEFT JOIN
+            ah_animal_device_link adl ON d.id = adl.device_id AND adl.is_active = 1
+                LEFT JOIN
+            ah_animal a ON adl.animal_id = a.id
+        ${ew.customSqlSegment}
+    </select>
+
+    <select id="getDeviceKpis" resultType="org.jeecg.modules.animalhusbandry.vo.DeviceKpiVo">
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN d.update_time >= DATE_SUB(NOW(), INTERVAL #{offlineThresholdHours} HOUR) THEN 1 ELSE 0 END) AS online,
+            SUM(CASE WHEN d.update_time &lt; DATE_SUB(NOW(), INTERVAL #{offlineThresholdHours} HOUR) THEN 1 ELSE 0 END) AS offline,
+            SUM(CASE WHEN d.battery_level &lt; #{lowBatteryThreshold} THEN 1 ELSE 0 END) AS lowBattery
+        FROM
+            ah_device d
+    </select>
+
+    <select id="queryProblematicDevices" resultType="org.jeecg.modules.animalhusbandry.vo.ProblematicDeviceVo">
+        SELECT
+            d.id,
+            d.name,
+            d.device_type as deviceType,
+            dict.item_text AS deviceTypeDictText,
+            d.dev_eui as devEui,
+            d.battery_level as batteryLevel,
+            d.update_time as updateTime,
+            a.ear_tag_id AS animalEarTag,
+            (CASE WHEN d.update_time &lt; DATE_SUB(NOW(), INTERVAL #{offlineThresholdHours} HOUR) THEN 1 ELSE 0 END) AS isOffline,
+            (CASE WHEN d.battery_level &lt; #{lowBatteryThreshold} THEN 1 ELSE 0 END) AS isLowBattery
+        FROM
+            ah_device d
+        LEFT JOIN
+            ah_animal_device_link adl ON d.id = adl.device_id AND adl.is_active = 1
+        LEFT JOIN
+            ah_animal a ON adl.animal_id = a.id
+        LEFT JOIN
+            sys_dict_item dict ON d.device_type = dict.item_value AND dict.dict_id = (SELECT id FROM sys_dict WHERE dict_code = 'device_type')
+        WHERE
+            d.status IN ('ACTIVE', 'IDLE') AND
+            (d.update_time &lt; DATE_SUB(NOW(), INTERVAL #{offlineThresholdHours} HOUR)
+        OR
+            d.battery_level &lt; #{lowBatteryThreshold})
+    </select>
+
+</mapper> 

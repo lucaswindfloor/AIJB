@@ -1,0 +1,21 @@
+<mapper namespace="org.jeecg.modules.animalhusbandry.mapper.AhAlarmRecordMapper">
+
+    <!-- 获取最新的N条告警记录 -->
+    <select id="getRecentAlarms" resultType="org.jeecg.modules.animalhusbandry.vo.RecentAlarmVo">
+        SELECT
+            aar.id,
+            aar.animal_id,
+            aa.ear_tag_id,
+            aar.alarm_content,
+            aar.alarm_level,
+            aar.alarm_time
+        FROM
+            ah_alarm_record aar
+        LEFT JOIN
+            ah_animal aa ON aar.animal_id = aa.id
+        ORDER BY
+            aar.alarm_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper> 
