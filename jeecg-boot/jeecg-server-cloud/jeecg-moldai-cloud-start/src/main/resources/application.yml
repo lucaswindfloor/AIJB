@@ -1,0 +1,32 @@
+server:
+  port: 7090
+
+spring:
+  application:
+    name: jeecg-moldai
+  main:
+    allow-circular-references: true
+  config:
+    import:
+      - optional:nacos:${spring.application.name}-@profile.name@.yaml
+  cloud:
+    nacos:
+      config:
+        server-addr: @config.server-addr@
+        group: @config.group@
+        namespace: @config.namespace@
+        username: @config.username@
+        password: @config.password@
+      discovery:
+        server-addr: @config.server-addr@
+        group: @config.group@
+        namespace: @config.namespace@
+        username: @config.username@
+        password: @config.password@
+
+# 本地配置 (部分配置应放入Nacos)
+mold-ai:
+  platform:
+    base-url: http://localhost:8080
+    username: tenant@thingsboard.org
+    password: tenant

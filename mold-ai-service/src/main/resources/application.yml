@@ -1,0 +1,54 @@
+server:
+  port: 7090  # 沿用原端口
+
+spring:
+  application:
+    name: mold-ai-service
+  datasource:
+    # 1. MySQL主库 (业务数据：场景、绑定关系、分析结果)
+    # 注意：这里改回了 jeecg-boot 库，但我们用表名 'mai_*' 做了隔离。
+    # 既然是独立微服务，通常建议用独立的 'mold_ai_db'，但如果为了方便开发想共用库，也可以。
+    # 这里我按你的要求，对齐了原配置的 MySQL 连接信息。
+    url: jdbc:mysql://127.0.0.1:3306/mold_ai_db?characterEncoding=UTF-8&useUnicode=true&useSSL=false&tinyInt1isBit=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# Mybatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/*.xml
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: delFlag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 霉菌AI模块专用配置
+mold-ai:
+  # 2. TDengine时序库 (存温湿度原始数据)
+  tdengine:
+    url: jdbc:TAOS://172.22.2.122:6030/animal_husbandry
+    username: root
+    password: taosdata
+  
+  jeecg:
+    # Jeecg Boot 服务地址
+    api-url: http://localhost:8080/jeecg-boot
+    api-token: system_integration_token_placeholder
+
+  # 算法与调度配置
+  algorithm:
+    window-days: 7
+    decay-factor: 0.95
+  
+  scheduler:
+    enabled: true
+    batch-size: 20
+
+logging:
+  level:
+    com.moldai: debug
+    org.springframework: info

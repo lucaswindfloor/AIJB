@@ -19,6 +19,7 @@
         <module>jeecg-boot-module-animalhusbandry</module>
         <!-- 新增AI业务逻辑模块 -->
         <module>jeecg-boot-module-ai-service</module>
+        <module>jeecg-boot-module-moldai</module>
     </modules>
 
 
