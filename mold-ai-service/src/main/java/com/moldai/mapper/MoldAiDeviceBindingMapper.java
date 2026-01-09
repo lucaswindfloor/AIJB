@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface MoldAiDeviceBindingMapper extends BaseMapper<MoldAiDeviceBinding> {
     
-    @Select("SELECT * FROM mold_ai_device_binding WHERE device_id = #{deviceId} LIMIT 1")
+    @Select("SELECT * FROM mai_device_binding WHERE device_id = #{deviceId} LIMIT 1")
     MoldAiDeviceBinding selectByDeviceId(String deviceId);
 }
 

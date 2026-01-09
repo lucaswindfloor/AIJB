@@ -1,5 +1,6 @@
 package com.moldai.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.moldai.algorithm.VTTCalculator;
 import com.moldai.entity.MoldAiDeviceBinding;
 import com.moldai.entity.MoldAiRiskResult;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -36,6 +38,9 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     
     @Autowired
     private MoldAiRiskResultMapper resultMapper;
+
+    @org.springframework.beans.factory.annotation.Value("${mold-ai.algorithm.window-days:7}")
+    private int windowDays;
     
     @Override
     public MoldAiRiskResult analyze(String deviceId) {
@@ -54,9 +59,11 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
             return null;
         }
         
-        // 2. 从遥测服务获取7天历史数据 (使用1h聚合)
+        // 2. 从遥测服务获取历史数据
         Instant endTime = Instant.now();
-        Instant startTime = endTime.minus(7, ChronoUnit.DAYS);
+        Instant startTime = endTime.minus(windowDays, ChronoUnit.DAYS);
+        
+        log.info("Querying data from {} to {} (Window: {} days)", startTime, endTime, windowDays);
         
         List<VTTCalculator.DataPoint> dataPoints = telemetryService.queryTelemetry(
             deviceId, startTime.toEpochMilli(), endTime.toEpochMilli(), "1h");
@@ -97,6 +104,16 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     public MoldAiRiskResult getLatest(String deviceId) {
         return resultMapper.selectLatestByDeviceId(deviceId);
     }
+
+    @Override
+    public List<MoldAiScene> getSceneList() {
+        return sceneMapper.selectList(new LambdaQueryWrapper<MoldAiScene>()
+                .eq(MoldAiScene::getEnabled, 1)
+                .orderByAsc(MoldAiScene::getId));
+    }
+
+    @Override
+    public List<MoldAiRiskResult> getHistory(String deviceId, int limit) {
+        return resultMapper.selectHistory(deviceId, limit);
+    }
 }
-
-

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霉菌风险分析 AI 模块 - 控制台</title>
+    <!-- CDN 依赖 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/echarts/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif; background-color: #f5f7fa; padding: 20px; }
+        .app-container { max-width: 1200px; margin: 0 auto; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .risk-tag-HIGH { color: #f56c6c; font-weight: bold; }
+        .risk-tag-MEDIUM { color: #e6a23c; font-weight: bold; }
+        .risk-tag-LOW { color: #67c23a; font-weight: bold; }
+        .dashboard-row { margin-bottom: 20px; }
+        #chart-container { width: 100%; height: 400px; }
+    </style>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <h1>🦠 霉菌风险预测 AI 控制台</h1>
+        
+        <!-- 顶部操作栏 -->
+        <el-row :gutter="20" class="dashboard-row">
+            <el-col :span="8">
+                <el-card>
+                    <template #header>
+                        <div class="card-header">
+                            <span>设备与场景绑定</span>
+                        </div>
+                    </template>
+                    <el-form label-position="top">
+                        <el-form-item label="设备 ID (Device ID)">
+                            <el-input v-model="deviceId" placeholder="输入设备ID，如 0095..."></el-input>
+                        </el-form-item>
+                        <el-form-item label="选择场景 (Scene)">
+                            <el-select v-model="selectedScene" placeholder="请选择场景" style="width: 100%">
+                                <el-option v-for="s in scenes" :key="s.id" :label="s.sceneName" :value="s.id">
+                                    <span style="float: left">{{ s.sceneName }}</span>
+                                    <span style="float: right; color: #8492a6; font-size: 13px">{{ s.materialLevel }}级</span>
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                        <el-button type="primary" @click="bindDevice" :loading="loading">绑定设备</el-button>
+                    </el-form>
+                </el-card>
+            </el-col>
+
+            <el-col :span="8">
+                <el-card>
+                    <template #header>
+                        <div class="card-header">
+                            <span>手动触发分析</span>
+                        </div>
+                    </template>
+                    <div style="text-align: center; padding: 20px;">
+                        <el-statistic v-if="latestResult" :value="latestResult.miValue" :precision="4" title="当前霉菌指数 (MI)">
+                            <template #suffix>
+                                <span :class="'risk-tag-' + latestResult.riskLevel" style="margin-left: 10px; font-size: 16px;">
+                                    {{ latestResult.riskLevel }}
+                                </span>
+                            </template>
+                        </el-statistic>
+                        <div v-else style="color: #909399; margin-bottom: 20px;">暂无数据</div>
+                        
+                        <el-button type="danger" size="large" @click="analyze" :disabled="!deviceId" :loading="analyzing" icon="VideoPlay">
+                            立即分析
+                        </el-button>
+                        <div style="margin-top: 10px; font-size: 12px; color: #909399;">
+                            触发 VTT 算法，基于过去 7 天数据计算
+                        </div>
+                    </div>
+                </el-card>
+            </el-col>
+
+            <el-col :span="8">
+                <el-card>
+                    <template #header>
+                        <div class="card-header"><span>系统状态</span></div>
+                    </template>
+                    <el-descriptions :column="1" border>
+                        <el-descriptions-item label="服务状态">
+                            <el-tag type="success">Running</el-tag>
+                        </el-descriptions-item>
+                        <el-descriptions-item label="TDengine">
+                            <el-tag type="success">Connected</el-tag>
+                        </el-descriptions-item>
+                        <el-descriptions-item label="当前时间">{{ currentTime }}</el-descriptions-item>
+                    </el-descriptions>
+                </el-card>
+            </el-col>
+        </el-row>
+
+        <!-- 历史趋势图 -->
+        <el-row class="dashboard-row">
+            <el-col :span="24">
+                <el-card>
+                    <template #header>
+                        <div class="card-header">
+                            <span>霉菌风险趋势 (MI Trend)</span>
+                            <el-button size="small" @click="fetchHistory" icon="Refresh">刷新</el-button>
+                        </div>
+                    </template>
+                    <div id="chart-container"></div>
+                </el-card>
+            </el-col>
+        </el-row>
+
+        <!-- 历史记录表格 -->
+        <el-row>
+            <el-col :span="24">
+                <el-card>
+                    <template #header><span>详细历史记录</span></template>
+                    <el-table :data="historyData" style="width: 100%" stripe>
+                        <el-table-column prop="calculatedTime" label="计算时间" width="200">
+                            <template #default="scope">{{ formatDate(scope.row.calculatedTime) }}</template>
+                        </el-table-column>
+                        <el-table-column prop="miValue" label="MI 值">
+                            <template #default="scope">{{ Number(scope.row.miValue).toFixed(4) }}</template>
+                        </el-table-column>
+                        <el-table-column prop="riskLevel" label="风险等级">
+                            <template #default="scope">
+                                <el-tag :type="getRiskType(scope.row.riskLevel)">{{ scope.row.riskLevel }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="deviceId" label="设备 ID"></el-table-column>
+                    </el-table>
+                </el-card>
+            </el-col>
+        </el-row>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        const API_BASE = '/api/v1/mold-ai';
+
+        const app = createApp({
+            setup() {
+                const deviceId = ref('009569000004097a'); // 默认填入测试ID
+                const selectedScene = ref('');
+                const scenes = ref([]);
+                const loading = ref(false);
+                const analyzing = ref(false);
+                const latestResult = ref(null);
+                const historyData = ref([]);
+                const currentTime = ref(new Date().toLocaleString());
+                let chartInstance = null;
+
+                // 加载场景列表
+                const fetchScenes = async () => {
+                    try {
+                        const res = await axios.get(`${API_BASE}/scene/list`);
+                        if (res.data.code === 200) {
+                            scenes.value = res.data.result;
+                            if (scenes.value.length > 0) {
+                                // 默认选一个
+                                // selectedScene.value = scenes.value[0].id;
+                            }
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('加载场景失败');
+                    }
+                };
+
+                // 绑定设备
+                const bindDevice = async () => {
+                    if (!deviceId.value || !selectedScene.value) {
+                        ElementPlus.ElMessage.warning('请填写完整');
+                        return;
+                    }
+                    loading.value = true;
+                    try {
+                        const res = await axios.post(`${API_BASE}/binding/bind?deviceId=${deviceId.value}&sceneId=${selectedScene.value}`);
+                        if (res.data.code === 200) {
+                            ElementPlus.ElMessage.success('绑定成功');
+                        } else {
+                            ElementPlus.ElMessage.error(res.data.message);
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('绑定请求失败');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 触发分析
+                const analyze = async () => {
+                    analyzing.value = true;
+                    try {
+                        const res = await axios.post(`${API_BASE}/analyze/${deviceId.value}`);
+                        if (res.data.code === 200) {
+                            ElementPlus.ElMessage.success('分析完成');
+                            latestResult.value = res.data.result;
+                            fetchHistory(); // 刷新图表
+                        } else {
+                            ElementPlus.ElMessage.warning(res.data.message || '分析未产生结果 (可能无数据)');
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('分析请求异常');
+                    } finally {
+                        analyzing.value = false;
+                    }
+                };
+
+                // 获取历史并画图
+                const fetchHistory = async () => {
+                    if (!deviceId.value) return;
+                    try {
+                        const res = await axios.get(`${API_BASE}/result/history/${deviceId.value}?limit=50`);
+                        if (res.data.code === 200) {
+                            historyData.value = res.data.result;
+                            renderChart(historyData.value);
+                            // 更新最新状态
+                            if (historyData.value.length > 0) {
+                                latestResult.value = historyData.value[0];
+                            }
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const renderChart = (data) => {
+                    if (!chartInstance) {
+                        chartInstance = echarts.init(document.getElementById('chart-container'));
+                    }
+                    // 数据按时间升序
+                    const sorted = [...data].reverse();
+                    const dates = sorted.map(d => new Date(d.calculatedTime).toLocaleString());
+                    const values = sorted.map(d => d.miValue);
+
+                    const option = {
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: dates },
+                        yAxis: { type: 'value', name: '霉菌指数 (MI)' },
+                        series: [{
+                            data: values,
+                            type: 'line',
+                            smooth: true,
+                            areaStyle: { opacity: 0.1 },
+                            itemStyle: { color: '#409EFF' },
+                            markLine: {
+                                data: [
+                                    { yAxis: 0.5, name: 'Low Threshold', lineStyle: { color: '#E6A23C' } },
+                                    { yAxis: 2.0, name: 'High Threshold', lineStyle: { color: '#F56C6C' } }
+                                ]
+                            }
+                        }]
+                    };
+                    chartInstance.setOption(option);
+                };
+
+                const formatDate = (dateStr) => {
+                    return new Date(dateStr).toLocaleString();
+                };
+
+                const getRiskType = (level) => {
+                    if (level === 'HIGH') return 'danger';
+                    if (level === 'MEDIUM') return 'warning';
+                    return 'success';
+                };
+
+                onMounted(() => {
+                    fetchScenes();
+                    // 默认加载一次历史
+                    fetchHistory();
+                    
+                    // 实时时间
+                    setInterval(() => {
+                        currentTime.value = new Date().toLocaleString();
+                    }, 1000);
+                });
+
+                return {
+                    deviceId, selectedScene, scenes, loading, analyzing,
+                    latestResult, historyData, currentTime,
+                    bindDevice, analyze, fetchHistory, formatDate, getRiskType
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

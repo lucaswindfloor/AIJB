@@ -1,12 +1,16 @@
 package com.moldai.controller;
 
 import com.moldai.entity.MoldAiRiskResult;
+import com.moldai.entity.MoldAiScene;
 import com.moldai.service.IMoldAiAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/mold-ai")
+@CrossOrigin(origins = "*") // 允许跨域，方便前端调试
 public class MoldAiAnalysisController {
 
     @Autowired
@@ -30,6 +34,15 @@ public class MoldAiAnalysisController {
     public ApiResponse<MoldAiRiskResult> getLatest(@PathVariable String deviceId) {
         return ApiResponse.success(analysisService.getLatest(deviceId));
     }
+
+    @GetMapping("/result/history/{deviceId}")
+    public ApiResponse<List<MoldAiRiskResult>> getHistory(@PathVariable String deviceId, 
+                                                          @RequestParam(defaultValue = "20") int limit) {
+        return ApiResponse.success(analysisService.getHistory(deviceId, limit));
+    }
+
+    @GetMapping("/scene/list")
+    public ApiResponse<List<MoldAiScene>> getSceneList() {
+        return ApiResponse.success(analysisService.getSceneList());
+    }
 }
-
-
