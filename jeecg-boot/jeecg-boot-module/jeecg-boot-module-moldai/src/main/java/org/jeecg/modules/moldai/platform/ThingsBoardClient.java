@@ -84,6 +84,37 @@ public class ThingsBoardClient {
         }
     }
 
+    /**
+     * 发送RPC命令控制设备
+     * @param deviceId 设备ID
+     * @param method 方法名
+     * @param params 参数
+     */
+    public void sendRpcCommand(String deviceId, String method, Object params) {
+        ensureToken();
+
+        // TB API: /api/plugins/rpc/oneway/{deviceId} (单向，不等待设备响应)
+        // 或者 /api/plugins/rpc/twoway/{deviceId} (双向，等待响应)
+        String url = String.format("%s/api/plugins/rpc/oneway/%s", baseUrl, deviceId);
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("method", method);
+        request.put("params", params);
+        // request.put("timeout", 500);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+        try {
+            restTemplate.postForEntity(url, entity, String.class);
+            log.info("向设备[{}]发送RPC命令成功: method={}, params={}", deviceId, method, params);
+        } catch (Exception e) {
+            log.error("向设备[{}]发送RPC命令失败: {}", deviceId, e.getMessage());
+        }
+    }
+
     private void ensureToken() {
         if (System.currentTimeMillis() < tokenExpireTime) {
             return;

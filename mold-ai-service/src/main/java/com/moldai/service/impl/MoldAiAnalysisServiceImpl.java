@@ -8,6 +8,8 @@ import com.moldai.entity.MoldAiScene;
 import com.moldai.mapper.MoldAiDeviceBindingMapper;
 import com.moldai.mapper.MoldAiRiskResultMapper;
 import com.moldai.mapper.MoldAiSceneMapper;
+import com.moldai.service.AlarmService;
+import com.moldai.service.IDeviceControlService;
 import com.moldai.service.IMoldAiAnalysisService;
 import com.moldai.service.ITelemetryService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +18,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -29,6 +32,12 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     
     @Autowired
     private ITelemetryService telemetryService;
+
+    @Autowired
+    private AlarmService alarmService;
+
+    @Autowired
+    private IDeviceControlService deviceControlService;
     
     @Autowired
     private MoldAiSceneMapper sceneMapper;
@@ -96,8 +105,57 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
         
         // 5. 推送结果 (可选)
         telemetryService.pushResult(deviceId, calcResult);
+
+        // 6. 告警与控制逻辑
+        // 【强制演示模式】：无论什么风险等级，都强制触发控制，验证闭环
+        log.info("【FORCE DEMO】Triggering control regardless of risk level: {}", result.getRiskLevel());
+        handleRiskResponse(deviceId, scene, result, true); // true = force trigger
         
         return result;
+    }
+
+    private void handleRiskResponse(String deviceId, MoldAiScene scene, MoldAiRiskResult result, boolean forceTrigger) {
+        String level = result.getRiskLevel();
+        double mi = result.getMiValue().doubleValue();
+
+        // 只要是 HIGH 或者 开启了强制触发，都执行
+        if ("HIGH".equals(level) || forceTrigger) {
+            // 1. 发送紧急告警
+            String msg = String.format("设备 [%s] 处于高风险状态！(MI: %.2f, 场景: %s)", 
+                                     deviceId, mi, scene.getSceneName());
+            alarmService.sendAlarm("高风险预警", msg);
+
+            // 2. 自动触发控制
+            log.info("Triggering CONTROL for device [{}] due to HIGH risk.", deviceId);
+            
+            Map<String, String> params = new HashMap<>();
+            // 实际业务：开启除湿机/排风扇
+            // params.put("power", "on"); 
+            // deviceControlService.sendRpcCommand(deviceId, "enable_dehumidifier", params);
+            
+            // 【当前演示】：触发地锁作为验证
+            params.put("lockControl", "01"); 
+            
+            // 为了保证能控制到真实设备，这里硬编码了地锁ID (仅供演示)
+            // 生产环境应从 device_binding 表中查关联设备ID
+            String targetDevice = "7dc08ac0-4c15-11f0-bda4-570db53547bd"; 
+            
+            boolean success = deviceControlService.sendRpcCommand(targetDevice, "LockControl", params);
+            
+            if (success) {
+                log.info("Auto-control command sent successfully.");
+            } else {
+                log.error("Failed to send auto-control command.");
+            }
+
+        } else if ("MEDIUM".equals(level)) {
+            // 1. 发送普通告警
+            String msg = String.format("设备 [%s] 风险升高，请注意。(MI: %.2f, 场景: %s)", 
+                                     deviceId, mi, scene.getSceneName());
+            alarmService.sendAlarm("中度风险提示", msg);
+            
+            // 中风险暂时不自动控制，或者只开启轻微通风
+        }
     }
 
     @Override

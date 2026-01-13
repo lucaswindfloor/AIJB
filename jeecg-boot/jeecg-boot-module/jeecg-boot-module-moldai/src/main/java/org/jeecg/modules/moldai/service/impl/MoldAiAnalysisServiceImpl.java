@@ -8,6 +8,7 @@ import org.jeecg.modules.moldai.entity.MoldAiScene;
 import org.jeecg.modules.moldai.mapper.MoldAiDeviceBindingMapper;
 import org.jeecg.modules.moldai.mapper.MoldAiRiskResultMapper;
 import org.jeecg.modules.moldai.mapper.MoldAiSceneMapper;
+import org.jeecg.modules.moldai.platform.ThingsBoardClient;
 import org.jeecg.modules.moldai.service.IMoldAiAnalysisService;
 import org.jeecg.modules.moldai.service.ITelemetryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -27,6 +30,9 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     
     @Autowired
     private ITelemetryService telemetryService;
+
+    @Autowired
+    private ThingsBoardClient thingsBoardClient;
     
     @Autowired
     private MoldAiSceneMapper sceneMapper;
@@ -89,6 +95,17 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
         
         // 5. 推送结果 (可选：推回TB或TDengine)
         telemetryService.pushResult(deviceId, calcResult);
+
+        // 6. 智能联动：风险过高时触发车位锁
+        if ("HIGH".equals(result.getRiskLevel())) {
+            log.info("设备[{}]霉菌风险等级为HIGH(MI={})，触发车位锁控制", deviceId, result.getMiValue());
+            // 构造RPC参数，具体协议需根据设备定义，这里假设发送 set_lock 指令
+            Map<String, Object> params = new HashMap<>();
+            params.put("lock", false); // 假设 false 代表降下车位锁/打开通路
+            params.put("triggered_by", "mold_ai_risk_high");
+            
+            thingsBoardClient.sendRpcCommand(deviceId, "set_lock", params);
+        }
         
         return result;
     }

@@ -48,6 +48,13 @@ mold-ai:
     enabled: true
     webhook-url: "" # 钉钉/企微 Webhook，留空则只打印日志
 
+  # ThingsBoard 对接配置
+  thingsboard:
+    enabled: true # 开启真实控制
+    api-url: http://172.22.3.102:8092/api
+    username: tenant@hkt.com
+    password: xxxxxx
+
 logging:
   level:
     com.moldai: debug
