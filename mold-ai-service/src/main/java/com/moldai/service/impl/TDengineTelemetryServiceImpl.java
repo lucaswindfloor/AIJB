@@ -94,24 +94,36 @@ public class TDengineTelemetryServiceImpl implements ITelemetryService {
     }
 
     private List<VTTCalculator.DataPoint> aggregatePoints(List<VTTCalculator.DataPoint> rawPoints, String interval) {
-        if (!"1h".equals(interval)) {
-            return rawPoints;
+        // 解析聚合间隔（毫秒）
+        long intervalMs;
+        switch (interval) {
+            case "30m":
+                intervalMs = 30 * 60 * 1000L;  // 30分钟
+                break;
+            case "1h":
+                intervalMs = 60 * 60 * 1000L;  // 1小时
+                break;
+            case "15m":
+                intervalMs = 15 * 60 * 1000L;  // 15分钟
+                break;
+            default:
+                return rawPoints;  // 不聚合，返回原始数据
         }
 
         Map<Long, List<VTTCalculator.DataPoint>> grouped = rawPoints.stream()
             .collect(Collectors.groupingBy(p -> {
-                return p.getTimestamp() / (3600 * 1000) * (3600 * 1000);
+                return p.getTimestamp() / intervalMs * intervalMs;
             }));
             
         return grouped.entrySet().stream()
             .map(entry -> {
-                long hourTs = entry.getKey();
+                long bucketTs = entry.getKey();
                 List<VTTCalculator.DataPoint> points = entry.getValue();
                 
                 double avgTemp = points.stream().mapToDouble(VTTCalculator.DataPoint::getTemperature).average().orElse(0.0);
                 double avgHum = points.stream().mapToDouble(VTTCalculator.DataPoint::getHumidity).average().orElse(0.0);
                 
-                return new VTTCalculator.DataPoint(hourTs, avgTemp, avgHum);
+                return new VTTCalculator.DataPoint(bucketTs, avgTemp, avgHum);
             })
             .sorted(Comparator.comparing(VTTCalculator.DataPoint::getTimestamp))
             .collect(Collectors.toList());

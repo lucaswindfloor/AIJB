@@ -34,4 +34,10 @@ public interface IMoldAiAnalysisService {
      * @return 历史记录列表
      */
     List<MoldAiRiskResult> getHistory(String deviceId, int limit);
+
+    /**
+     * 手动控制车位锁
+     * @param command 控制指令 (01: 升起, 02: 降下)
+     */
+    void manualControlLock(String command);
 }

@@ -76,7 +76,7 @@ public class ThingsBoardControlServiceImpl implements IDeviceControlService {
             // 根据用户提供的 debug 信息，地锁控制似乎是 /rpc/twoway/
             // 我们通过一个简单的判断逻辑来支持：如果 method 包含 "LockControl" 或其他特定方法，切到 twoway
             String callType = "oneway";
-            if ("LockControl".equals(method)) {
+            if ("LockControl".equals(method) || "SwitchControl".equals(method)) {
                 callType = "twoway";
             }
             

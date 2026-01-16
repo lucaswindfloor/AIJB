@@ -27,6 +27,9 @@ import java.util.Map;
 @Service
 public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     
+    // 为了保证能控制到真实设备，这里硬编码了地锁ID (仅供演示)
+    private static final String LOCK_DEVICE_ID = "7dc08ac0-4c15-11f0-bda4-570db53547bd";
+
     @Autowired
     private VTTCalculator calculator;
     
@@ -107,9 +110,9 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
         telemetryService.pushResult(deviceId, calcResult);
 
         // 6. 告警与控制逻辑
-        // 【强制演示模式】：无论什么风险等级，都强制触发控制，验证闭环
-        log.info("【FORCE DEMO】Triggering control regardless of risk level: {}", result.getRiskLevel());
-        handleRiskResponse(deviceId, scene, result, true); // true = force trigger
+        // 【逻辑修改】：只在高风险时触发，移除强制触发逻辑
+        log.info("Checking control logic for risk level: {}", result.getRiskLevel());
+        handleRiskResponse(deviceId, scene, result, false); 
         
         return result;
     }
@@ -136,11 +139,7 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
             // 【当前演示】：触发地锁作为验证
             params.put("lockControl", "01"); 
             
-            // 为了保证能控制到真实设备，这里硬编码了地锁ID (仅供演示)
-            // 生产环境应从 device_binding 表中查关联设备ID
-            String targetDevice = "7dc08ac0-4c15-11f0-bda4-570db53547bd"; 
-            
-            boolean success = deviceControlService.sendRpcCommand(targetDevice, "LockControl", params);
+            boolean success = deviceControlService.sendRpcCommand(LOCK_DEVICE_ID, "LockControl", params);
             
             if (success) {
                 log.info("Auto-control command sent successfully.");
@@ -173,5 +172,19 @@ public class MoldAiAnalysisServiceImpl implements IMoldAiAnalysisService {
     @Override
     public List<MoldAiRiskResult> getHistory(String deviceId, int limit) {
         return resultMapper.selectHistory(deviceId, limit);
+    }
+
+    @Override
+    public void manualControlLock(String command) {
+        log.info("Manual Lock Control Triggered: Command={}", command);
+        Map<String, String> params = new HashMap<>();
+        params.put("lockControl", command);
+        
+        boolean success = deviceControlService.sendRpcCommand(LOCK_DEVICE_ID, "LockControl", params);
+        if (success) {
+            log.info("Manual lock command sent successfully.");
+        } else {
+            log.error("Failed to send manual lock command.");
+        }
     }
 }

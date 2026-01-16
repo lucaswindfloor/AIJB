@@ -40,7 +40,7 @@ mold-ai:
   
   scheduler:
     enabled: true        # 是否开启定时任务
-    cron: "0/30 * * * * ?"  # 测试：每30秒执行一次
+    cron: "0 0/30 * * * ?"  # 每半小时执行一次（每小时的0分和30分）
     batch-size: 20
 
   # 告警配置 (新增)
