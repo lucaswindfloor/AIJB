@@ -20,3 +20,4 @@ public interface MoldAiActuatorMapper extends BaseMapper<MoldAiActuator> {
     List<MoldAiActuator> selectBySensorDeviceId(@Param("sensorDeviceId") String sensorDeviceId);
 }
 
+

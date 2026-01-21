@@ -22,3 +22,4 @@ public interface MoldAiSensorActuatorLinkMapper extends BaseMapper<MoldAiSensorA
     int deleteByActuatorId(@Param("actuatorId") String actuatorId);
 }
 
+

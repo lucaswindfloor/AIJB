@@ -1,0 +1,54 @@
+server:
+  port: 7090
+
+spring:
+  application:
+    name: mold-ai-service
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/mold_ai_db_v2?characterEncoding=UTF-8&useUnicode=true&useSSL=false&tinyInt1isBit=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# Mybatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/*.xml
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: delFlag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 霉菌AI模块专用配置
+mold-ai:
+  tdengine:
+    url: jdbc:TAOS://172.22.2.122:6030/animal_husbandry
+    username: root
+    password: taosdata
+  
+  jeecg:
+    api-url: http://localhost:8080/jeecg-boot
+    api-token: system_integration_token_placeholder
+
+  # 算法与调度配置
+  algorithm:
+    window-days: 7       # 默认7天
+    decay-factor: 0.95
+  
+  scheduler:
+    enabled: true        # 是否开启定时任务
+    cron: "0 0 * * * ?"  # 每小时执行一次 (整点)
+    # cron: "0 0/30 * * * ?"  # 生产环境：每半小时执行一次
+
+  # 结果推送配置 (替代原有的 ThingsBoard 控制)
+  push:
+    enabled: false # 暂时关闭推送，直到确认正确的地址
+    target-url: "http://172.22.3.102:8092/api/v1/integrations/http/mold-risk" # 示例：推送给 ThingsBoard 集成或其他服务
+
+logging:
+  level:
+    com.moldai: debug
+    org.springframework: info

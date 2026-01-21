@@ -36,3 +36,4 @@ CREATE TABLE IF NOT EXISTS `mai_sensor_actuator_link` (
 INSERT INTO `mai_actuator` (`id`, `device_id`, `device_name`, `device_type`, `rpc_method`, `enabled`) VALUES
 ('1', '7dc08ac0-4c15-11f0-bda4-570db53547bd', '演示车位锁', 'parking_lock', 'LockControl', 1);
 
+

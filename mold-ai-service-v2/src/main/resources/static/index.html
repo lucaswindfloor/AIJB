@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>霉菌风险预测 AI 控制台</title>
+    <title>霉菌风险预测 AI 控制台 (Pure Calc)</title>
     <!-- CDN 依赖 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
@@ -353,83 +353,6 @@
             box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4) !important;
         }
 
-        .lock-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .lock-btn {
-            height: 56px;
-            border-radius: 10px !important;
-            font-size: 14px !important;
-            font-weight: 600 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 4px !important;
-            transition: all 0.3s !important;
-        }
-
-        .lock-btn .icon { font-size: 18px; }
-
-        .lock-btn.up {
-            background: linear-gradient(135deg, #10b981, #059669) !important;
-            border: none !important;
-        }
-
-        .lock-btn.down {
-            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
-            border: none !important;
-        }
-
-        .lock-btn:hover { transform: translateY(-2px); }
-
-        .lock-info {
-            margin-top: 12px;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 6px;
-            font-size: 11px;
-            color: var(--text-muted);
-            font-family: 'JetBrains Mono', monospace;
-            line-height: 1.6;
-        }
-
-        /* 开关面板样式 */
-        .switch-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .switch-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .switch-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .switch-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .switch-actions .el-button {
-            flex: 1;
-        }
-
         /* ========== 图表 ========== */
         #chart-container {
             width: 100%;
@@ -538,11 +461,6 @@
             border-radius: 12px;
             font-size: 11px;
             font-weight: 500;
-        }
-
-        .device-type-tag.actuator {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
         }
 
         .device-type-tag.sensor {
@@ -654,14 +572,6 @@
             gap: 8px;
         }
 
-        .linked-tag {
-            padding: 2px 8px;
-            background: rgba(168, 85, 247, 0.15);
-            color: #c084fc;
-            border-radius: 4px;
-            font-size: 10px;
-        }
-
         .empty-list {
             text-align: center;
             padding: 24px;
@@ -760,7 +670,7 @@
                 <div class="logo-section">
                     <div class="logo-icon">🦠</div>
                     <div class="logo-text">
-                        <span class="logo-title">霉菌风险预测 AI</span>
+                        <span class="logo-title">霉菌风险预测 AI (Pure Calc)</span>
                         <span class="logo-subtitle">Mold Risk Prediction System</span>
                     </div>
                 </div>
@@ -854,83 +764,6 @@
                             </el-button>
                         </div>
                         </div>
-
-                    <!-- 车位锁控制 -->
-                    <div class="panel-section">
-                        <div class="panel-header">🔐 车位锁控制</div>
-                        <div class="panel-body">
-                            <div class="lock-grid">
-                                <el-button class="lock-btn up" @click="controlLock('02')" :loading="lockingUp">
-                                    <span class="icon">⬆️</span>
-                                    <span>升锁</span>
-                        </el-button>
-                                <el-button class="lock-btn down" @click="controlLock('01')" :loading="lockingDown">
-                                    <span class="icon">⬇️</span>
-                                    <span>降锁</span>
-                        </el-button>
-                        </div>
-                            <div class="lock-info">
-                                01: 降锁 | 02: 升锁<br>
-                                03: APP降锁 | 04: APP升锁
-                    </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 三路开关控制 -->
-                    <div class="panel-section">
-                        <div class="panel-header">🔌 三路开关控制</div>
-                        <div class="panel-body">
-                            <div class="switch-panel">
-                                <div class="switch-row">
-                                    <span class="switch-label">L1 通道</span>
-                                    <el-switch 
-                                        v-model="switchState.L1" 
-                                        active-text="开" 
-                                        inactive-text="关"
-                                        :loading="switchLoading"
-                                        @change="onSwitchChange"
-                                        active-color="#10b981"
-                                        inactive-color="#374151"
-                                    />
-                                </div>
-                                <div class="switch-row">
-                                    <span class="switch-label">L2 通道</span>
-                                    <el-switch 
-                                        v-model="switchState.L2" 
-                                        active-text="开" 
-                                        inactive-text="关"
-                                        :loading="switchLoading"
-                                        @change="onSwitchChange"
-                                        active-color="#10b981"
-                                        inactive-color="#374151"
-                                    />
-                                </div>
-                                <div class="switch-row">
-                                    <span class="switch-label">L3 通道</span>
-                                    <el-switch 
-                                        v-model="switchState.L3" 
-                                        active-text="开" 
-                                        inactive-text="关"
-                                        :loading="switchLoading"
-                                        @change="onSwitchChange"
-                                        active-color="#10b981"
-                                        inactive-color="#374151"
-                                    />
-                                </div>
-                            </div>
-                            <div class="switch-actions">
-                                <el-button size="small" type="success" @click="setAllSwitch(true)" :loading="switchLoading">
-                                    全部开启
-                                </el-button>
-                                <el-button size="small" type="warning" @click="setAllSwitch(false)" :loading="switchLoading">
-                                    全部关闭
-                                </el-button>
-                            </div>
-                            <div class="lock-info" style="margin-top: 12px;">
-                                设备ID: 24e124147b509419
-                            </div>
-                        </div>
-                    </div>
                 </aside>
 
                 <!-- 右侧趋势图 -->
@@ -980,6 +813,20 @@
                             </span>
                             </template>
                         </el-table-column>
+                    <el-table-column prop="temperature" label="温度 (°C)" width="120">
+                            <template #default="scope">
+                            <span style="font-family: 'JetBrains Mono', monospace;">
+                                {{ scope.row.temperature ? Number(scope.row.temperature).toFixed(1) : '--' }}
+                            </span>
+                            </template>
+                        </el-table-column>
+                    <el-table-column prop="humidity" label="湿度 (%)" width="120">
+                            <template #default="scope">
+                            <span style="font-family: 'JetBrains Mono', monospace;">
+                                {{ scope.row.humidity ? Number(scope.row.humidity).toFixed(1) : '--' }}
+                            </span>
+                            </template>
+                        </el-table-column>
                     <el-table-column prop="deviceId" label="设备 ID">
                             <template #default="scope">
                             <span class="device-id-cell">{{ scope.row.deviceId }}</span>
@@ -998,56 +845,6 @@
             class="config-drawer"
         >
             <div class="drawer-content">
-                <!-- 联动设备管理 -->
-                <div class="drawer-section">
-                    <div class="drawer-section-header">
-                        <span class="drawer-section-title">🔌 联动设备管理</span>
-                        <span class="device-type-tag actuator">执行器</span>
-                    </div>
-                    <div class="drawer-section-body">
-                        <div class="form-group">
-                            <label class="form-label">设备类型</label>
-                            <el-select v-model="newActuator.type" placeholder="选择设备类型" style="width: 100%" class="dark-input">
-                                <el-option label="🔒 车位锁" value="parking_lock"></el-option>
-                                <el-option label="🔌 LoRaWAN 开关" value="lorawan_switch"></el-option>
-                                <el-option label="💨 排风扇" value="exhaust_fan"></el-option>
-                                <el-option label="💧 除湿机" value="dehumidifier"></el-option>
-                                <el-option label="🔥 加热器" value="heater"></el-option>
-                            </el-select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">设备 ID</label>
-                            <el-input v-model="newActuator.deviceId" placeholder="平台设备标识" class="dark-input"></el-input>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">设备名称</label>
-                            <el-input v-model="newActuator.name" placeholder="如：仓库A区车位锁" class="dark-input"></el-input>
-                        </div>
-                        <el-button class="btn-add" @click="addActuator" :loading="addingActuator">
-                            ➕ 添加联动设备
-                        </el-button>
-
-                        <!-- 已添加的列表 -->
-                        <div class="device-list" v-if="actuators.length > 0">
-                            <div class="device-list-title">已添加 {{ actuators.length }} 个联动设备</div>
-                            <div class="device-item" v-for="(a, idx) in actuators" :key="a.deviceId">
-                                <div class="device-item-info">
-                                    <span class="device-item-icon">{{ getDeviceIcon(a.type) }}</span>
-                                    <div>
-                                        <div class="device-item-name">{{ a.name }}</div>
-                                        <div class="device-item-id">{{ a.deviceId }}</div>
-                                    </div>
-                                </div>
-                                <el-button type="danger" size="small" text @click="removeActuator(idx)">删除</el-button>
-                            </div>
-                        </div>
-                        <div v-else class="empty-list">
-                            <div class="empty-list-icon">📦</div>
-                            <p>暂无联动设备</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- 传感器设备管理 -->
                 <div class="drawer-section">
                     <div class="drawer-section-header">
@@ -1073,18 +870,6 @@
                             </el-select>
                             <p class="form-hint">场景决定材料敏感度和风险阈值</p>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">关联联动设备</label>
-                            <el-select v-model="newSensor.linkedActuators" multiple placeholder="选择要联动的设备" style="width: 100%" class="dark-input" :disabled="actuators.length === 0">
-                                <el-option v-for="a in actuators" :key="a.deviceId" :label="a.name" :value="a.deviceId">
-                                    <span>{{ getDeviceIcon(a.type) }} {{ a.name }}</span>
-                                </el-option>
-                            </el-select>
-                            <p class="form-hint" v-if="actuators.length === 0" style="color: var(--color-warning);">
-                                ⚠️ 请先添加联动设备
-                            </p>
-                            <p class="form-hint" v-else>高风险时将触发所选设备</p>
-                        </div>
                         <el-button class="btn-add" @click="addSensor" :loading="addingSensor">
                             ➕ 添加传感器
                         </el-button>
@@ -1104,9 +889,6 @@
                                     </div>
                                 </div>
                                 <div class="device-item-meta">
-                                    <span class="linked-tag" v-for="lid in s.linkedActuators" :key="lid">
-                                        {{ getActuatorName(lid) }}
-                                    </span>
                                     <el-button type="primary" size="small" text @click="openEditSensor(idx)">编辑</el-button>
                                     <el-button type="danger" size="small" text @click="removeSensor(idx)">删除</el-button>
                                 </div>
@@ -1149,14 +931,6 @@
                     </el-select>
                     <p class="form-hint">材质等级越低，临界湿度越低，越容易触发霉菌风险</p>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">关联联动设备</label>
-                    <el-select v-model="editingSensor.linkedActuators" multiple placeholder="选择联动设备" style="width: 100%" class="dark-input">
-                        <el-option v-for="a in actuators" :key="a.deviceId" :label="a.name" :value="a.deviceId">
-                            <span>{{ getDeviceIcon(a.type) }} {{ a.name }}</span>
-                        </el-option>
-                    </el-select>
-                </div>
             </div>
             <template #footer>
                 <el-button @click="editSensorDialog = false">取消</el-button>
@@ -1180,19 +954,14 @@
                 // 场景
                 const scenes = ref([]);
                 
-                // 联动设备
-                const actuators = ref([]);
-                const newActuator = ref({ type: '', deviceId: '', name: '' });
-                const addingActuator = ref(false);
-                
                 // 传感器
                 const sensors = ref([]);
-                const newSensor = ref({ deviceId: '', name: '', sceneId: '', linkedActuators: [] });
+                const newSensor = ref({ deviceId: '', name: '', sceneId: '' });
                 const addingSensor = ref(false);
                 
                 // 编辑传感器
                 const editSensorDialog = ref(false);
-                const editingSensor = ref({ deviceId: '', name: '', sceneId: '', linkedActuators: [] });
+                const editingSensor = ref({ deviceId: '', name: '', sceneId: '' });
                 const editingSensorIndex = ref(-1);
                 const savingSensor = ref(false);
                 
@@ -1202,14 +971,6 @@
                 const latestResult = ref(null);
                 const historyData = ref([]);
                 const telemetryData = ref([]);  // 温湿度历史数据
-                
-                // 车位锁控制
-                const lockingUp = ref(false);
-                const lockingDown = ref(false);
-                
-                // 三路开关控制
-                const switchState = ref({ L1: false, L2: false, L3: false });
-                const switchLoading = ref(false);
                 
                 let chartInstance = null;
 
@@ -1227,19 +988,9 @@
                     });
                 };
 
-                const getDeviceIcon = (type) => {
-                    const icons = { 'parking_lock': '🔒', 'lorawan_switch': '🔌', 'exhaust_fan': '💨', 'dehumidifier': '💧', 'heater': '🔥' };
-                    return icons[type] || '📦';
-                };
-
                 const getSceneName = (sceneId) => {
                     const scene = scenes.value.find(s => s.id === sceneId);
                     return scene ? scene.sceneName : '--';
-                };
-
-                const getActuatorName = (deviceId) => {
-                    const actuator = actuators.value.find(a => a.deviceId === deviceId);
-                    return actuator ? actuator.name : deviceId.slice(0, 8);
                 };
 
                 const getRiskDescription = (level) => {
@@ -1261,71 +1012,6 @@
                     } catch (e) { console.error(e); }
                 };
 
-                // ========== 联动设备管理（API） ==========
-                const fetchActuators = async () => {
-                    try {
-                        const res = await axios.get(`${API_BASE}/actuator/list`);
-                        if (res.data.code === 200) {
-                            // 转换后端数据格式为前端格式
-                            actuators.value = (res.data.result || []).map(a => ({
-                                id: a.id,
-                                deviceId: a.deviceId,
-                                name: a.deviceName,
-                                type: a.deviceType,
-                                rpcMethod: a.rpcMethod
-                            }));
-                        }
-                    } catch (e) { 
-                        console.error('加载联动设备失败', e); 
-                    }
-                };
-
-                const addActuator = async () => {
-                    if (!newActuator.value.type || !newActuator.value.deviceId || !newActuator.value.name) {
-                        ElementPlus.ElMessage.warning('请填写完整信息');
-                        return;
-                    }
-                    addingActuator.value = true;
-                    try {
-                        const res = await axios.post(`${API_BASE}/actuator/add`, {
-                            deviceId: newActuator.value.deviceId,
-                            deviceName: newActuator.value.name,
-                            deviceType: newActuator.value.type,
-                            rpcMethod: 'LockControl'
-                        });
-                        if (res.data.code === 200) {
-                            await fetchActuators();
-                            newActuator.value = { type: '', deviceId: '', name: '' };
-                            ElementPlus.ElMessage.success('联动设备添加成功');
-                        } else {
-                            ElementPlus.ElMessage.error(res.data.message || '添加失败');
-                        }
-                    } catch (e) {
-                        ElementPlus.ElMessage.error('添加请求失败');
-                    } finally {
-                        addingActuator.value = false;
-                    }
-                };
-
-                const removeActuator = async (index) => {
-                    const actuator = actuators.value[index];
-                    if (!actuator?.id) {
-                        actuators.value.splice(index, 1);
-                        return;
-                    }
-                    try {
-                        const res = await axios.delete(`${API_BASE}/actuator/delete/${actuator.id}`);
-                        if (res.data.code === 200) {
-                            await fetchActuators();
-                            ElementPlus.ElMessage.success('已删除');
-                        } else {
-                            ElementPlus.ElMessage.error(res.data.message || '删除失败');
-                        }
-                    } catch (e) {
-                        ElementPlus.ElMessage.error('删除请求失败');
-                    }
-                };
-
                 // ========== 传感器管理 ==========
                 const addSensor = async () => {
                     if (!newSensor.value.deviceId || !newSensor.value.name || !newSensor.value.sceneId) {
@@ -1338,19 +1024,11 @@
                         // 1. 绑定传感器到场景
                         const res = await axios.post(`${API_BASE}/binding/bind?deviceId=${newSensor.value.deviceId}&sceneId=${newSensor.value.sceneId}`);
                         if (res.data.code === 200) {
-                            // 2. 绑定联动设备（如果有选择）
-                            if (newSensor.value.linkedActuators && newSensor.value.linkedActuators.length > 0) {
-                                await axios.post(`${API_BASE}/actuator/sensor/${newSensor.value.deviceId}/bind`, {
-                                    actuatorIds: newSensor.value.linkedActuators,
-                                    triggerLevel: 'HIGH'
-                                });
-                            }
-                            
                             sensors.value.push({ ...newSensor.value });
                             if (!selectedSensorId.value) {
                                 selectedSensorId.value = newSensor.value.deviceId;
                             }
-                            newSensor.value = { deviceId: '', name: '', sceneId: '', linkedActuators: [] };
+                            newSensor.value = { deviceId: '', name: '', sceneId: '' };
                             saveSensorsToStorage();
                             ElementPlus.ElMessage.success('传感器添加成功');
                         } else {
@@ -1362,7 +1040,7 @@
                         if (!selectedSensorId.value) {
                             selectedSensorId.value = newSensor.value.deviceId;
                         }
-                        newSensor.value = { deviceId: '', name: '', sceneId: '', linkedActuators: [] };
+                        newSensor.value = { deviceId: '', name: '', sceneId: '' };
                         saveSensorsToStorage();
                         ElementPlus.ElMessage.warning('已添加（后端可能未连接）');
                     } finally {
@@ -1400,15 +1078,7 @@
                         const res = await axios.post(`${API_BASE}/binding/bind?deviceId=${editingSensor.value.deviceId}&sceneId=${editingSensor.value.sceneId}`);
                         
                         if (res.data.code === 200) {
-                            // 2. 更新联动设备绑定
-                            if (editingSensor.value.linkedActuators && editingSensor.value.linkedActuators.length > 0) {
-                                await axios.post(`${API_BASE}/actuator/sensor/${editingSensor.value.deviceId}/bind`, {
-                                    actuatorIds: editingSensor.value.linkedActuators,
-                                    triggerLevel: 'HIGH'
-                                });
-                            }
-                            
-                            // 3. 更新本地数据
+                            // 2. 更新本地数据
                             sensors.value[editingSensorIndex.value] = { ...editingSensor.value };
                             saveSensorsToStorage();
                             editSensorDialog.value = false;
@@ -1498,60 +1168,6 @@
                         // 如果温湿度数据获取失败，仍然尝试渲染 MI 图表
                         await nextTick();
                         renderChart(historyData.value, []);
-                    }
-                };
-
-                // ========== 车位锁控制 ==========
-                const controlLock = async (command) => {
-                    const isUp = command === '02';
-                    if (isUp) lockingUp.value = true;
-                    else lockingDown.value = true;
-
-                    const cmdName = command === '02' ? '升锁' : '降锁';
-                    try {
-                        const res = await axios.post(`${API_BASE}/control/lock?command=${command}`);
-                        if (res.data.code === 200) {
-                            ElementPlus.ElMessage.success(`${cmdName}指令已发送`);
-                        } else {
-                            ElementPlus.ElMessage.error(res.data.message || '指令发送失败');
-                        }
-                    } catch (e) {
-                        ElementPlus.ElMessage.error('请求异常');
-                    } finally {
-                        if (isUp) lockingUp.value = false;
-                        else lockingDown.value = false;
-                    }
-                };
-
-                // ========== 三路开关控制 ==========
-                const onSwitchChange = async () => {
-                    await sendSwitchCommand();
-                };
-
-                const setAllSwitch = async (on) => {
-                    switchState.value.L1 = on;
-                    switchState.value.L2 = on;
-                    switchState.value.L3 = on;
-                    await sendSwitchCommand();
-                };
-
-                const sendSwitchCommand = async () => {
-                    switchLoading.value = true;
-                    try {
-                        const l1 = switchState.value.L1 ? 'on' : 'off';
-                        const l2 = switchState.value.L2 ? 'on' : 'off';
-                        const l3 = switchState.value.L3 ? 'on' : 'off';
-                        
-                        const res = await axios.post(`${API_BASE}/control/switch?l1=${l1}&l2=${l2}&l3=${l3}`);
-                        if (res.data.code === 200) {
-                            ElementPlus.ElMessage.success('开关指令已发送');
-                        } else {
-                            ElementPlus.ElMessage.error(res.data.message || '指令发送失败');
-                        }
-                    } catch (e) {
-                        ElementPlus.ElMessage.error('请求异常');
-                    } finally {
-                        switchLoading.value = false;
                     }
                 };
 
@@ -1777,7 +1393,6 @@
                     // 加载数据
                     loadSensorsFromStorage();
                     await fetchScenes();
-                    await fetchActuators();
                     
                     // 如果没有配置传感器，自动添加默认传感器
                     if (sensors.value.length === 0) {
@@ -1785,7 +1400,6 @@
                             deviceId: DEFAULT_SENSOR_ID,
                             name: '默认温湿度传感器',
                             sceneId: '',
-                            linkedActuators: []
                         });
                         saveSensorsToStorage();
                     }
@@ -1799,14 +1413,11 @@
 
                 return {
                     currentTime, configDrawer, scenes,
-                    actuators, newActuator, addingActuator, addActuator, removeActuator, fetchActuators,
                     sensors, newSensor, addingSensor, addSensor, removeSensor,
                     editSensorDialog, editingSensor, savingSensor, openEditSensor, saveSensor,
                     selectedSensorId, currentSensorName, analyzing, latestResult, historyData,
-                    lockingUp, lockingDown,
-                    switchState, switchLoading, onSwitchChange, setAllSwitch,
-                    getDeviceIcon, getSceneName, getActuatorName, getRiskDescription, formatDate,
-                    onSensorChange, analyze, fetchHistory, controlLock
+                    getSceneName, getRiskDescription, formatDate,
+                    onSensorChange, analyze, fetchHistory
                 };
             }
         });
@@ -1816,5 +1427,3 @@
     </script>
 </body>
 </html>
-
-
